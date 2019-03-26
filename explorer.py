@@ -27,9 +27,7 @@ camera_dtype, camera_decl = cl.tools.match_dtype_to_c_struct(
         ("right", cl.cltypes.float3),
         ("view_plane_distance", cl.cltypes.float),
         ("ratio", cl.cltypes.float),
-        ("shift_multiplier", cl.cltypes.float),
-        ("height", cl.cltypes.int),
-        ("width", cl.cltypes.int)
+        ("shift_multiplier", cl.cltypes.float)
     ])
 )
 
@@ -45,15 +43,11 @@ class Camera:
                  up=np.array([0, 1, 0], cl.cltypes.float),
                  view_plane_distance=1.0,
                  ratio=1.0,
-                 shift_multiplier=0.01,
-                 height=1000,
-                 width=1000):
+                 shift_multiplier=0.01):
         self.pos = pos
 
         self.dir = dir if target is None else target - pos
         self.dir /= np.linalg.norm(self.dir)
-        self.height = height
-        self.width = width
 
         self.up = up / np.linalg.norm(up)
 
@@ -73,9 +67,7 @@ class Camera:
             tuple(self.right) + (0,),
             self.view_plane_distance,
             self.ratio,
-            self.shift_multiplier,
-            self.height,
-            self.width
+            self.shift_multiplier
         )], camera_dtype)[0]
 
         return camera
@@ -135,11 +127,11 @@ with open("kernels/mandelbox.cl", 'r') as f:
 # Создаем программу, вставляя в нее автоматически сгенерированный код для наших кастомных типов
 program = cl.Program(context, camera_decl + world_props_decl + mandelbox_kernel).build()
 
-camera = Camera(width=1500, height=1500)
+camera = Camera()
 world_props = WorldProps()
 
 # Выдлеяем память под итоговую картинку
-image_buffer_host = np.empty((camera.height, camera.width), cl.cltypes.uchar3)
+image_buffer_host = np.empty((1500, 1500), cl.cltypes.uchar3)
 
 # Выделяем память на GPU
 camera_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE, camera.cl.nbytes)

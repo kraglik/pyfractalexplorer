@@ -12,9 +12,7 @@ class Camera:
         ("right", cl.cltypes.float3),
         ("view_plane_distance", cl.cltypes.float),
         ("ratio", cl.cltypes.float),
-        ("shift_multiplier", cl.cltypes.float),
-        ("height", cl.cltypes.int),
-        ("width", cl.cltypes.int)
+        ("shift_multiplier", cl.cltypes.float)
     ])
 
     def __init__(self,
@@ -24,9 +22,8 @@ class Camera:
                  target=None,
                  view_plane_distance=1.0,
                  ratio=1.0,
-                 shift_multiplier=0.01,
-                 height=500,
-                 width=500):
+                 shift_multiplier=0.01):
+
         self.position = position
         self.direction = direction if target is None else (target - position)
         self.direction /= np.linalg.norm(self.direction)
@@ -38,8 +35,6 @@ class Camera:
         self.view_plane_distance = view_plane_distance
         self.ratio = ratio
         self.shift_multiplier = shift_multiplier
-        self.height = height
-        self.width = width
 
     def zoom(self, value):
         self.view_plane_distance *= value
@@ -54,8 +49,6 @@ class Camera:
             self.view_plane_distance,
             self.ratio,
             self.shift_multiplier,
-            self.width,
-            self.height
         ], dtype=self.camera_dtype)
 
         return raw_camera[0]
