@@ -6,6 +6,7 @@ typedef struct Ray {
 
 typedef struct Hit {
     float distance;
+    float3 position;
     int depth;
 } Hit;
 
@@ -75,13 +76,15 @@ float mandelbox_distance(float3 *p0, __global WorldProps * props) {
 }
 
 Hit march_ray(Ray *ray, __global WorldProps * props, float pathLen) {
-    Hit hit = { .distance = INFINITY };
+    Hit hit = { .distance = INFINITY, .depth = props->it_limit };
     float3 temp;
 
     float epsilon = props->epsilon;
 
     for (int i = 0; i < props->it_limit; i++) {
         float d = mandelbox_distance(&ray->pos, props);
+
+        hit.position = ray->pos + d * ray->dir;
 
         if (d < epsilon && !(isinf(d) || isnan(d))) {
             hit.distance = pathLen;
@@ -117,10 +120,13 @@ __kernel void render(__global Camera * camera, __global WorldProps * props, __gl
     int idX = get_global_id(0);
     int idY = get_global_id(1);
 
-    int pixel_id = idY * camera->width + idX;
+    int width = get_global_size(0);
+    int height = get_global_size(1);
 
-    float hx = (float)camera->width / 2.0f;
-    float hy = (float)camera->height / 2.0f;
+    int pixel_id = idY * width + idX;
+
+    float hx = (float)width / 2.0f;
+    float hy = (float)height / 2.0f;
 
     float x = ((float)idX - hx) / hx * camera->ratio;
     float y = ((float)idY - hy) / hy;
@@ -129,7 +135,11 @@ __kernel void render(__global Camera * camera, __global WorldProps * props, __gl
 
     float color_strength = 1.0f - (float)hit.depth / (float)props->it_limit;
 
-    if (!isinf(hit.distance)) {
+    bool in_box = hit.position.x >= -5.0f && hit.position.x <= 5.0f &&
+                  hit.position.y >= -5.0f && hit.position.y <= 5.0f &&
+                  hit.position.z >= -5.0f && hit.position.z <= 5.0f;
+
+    if (hit.distance != INFINITY || in_box) {
 
         pixels[pixel_id].x = (unsigned char)clamp((color_strength * 229.0f), 0.0f, 229.0f);
         pixels[pixel_id].y = (unsigned char)clamp((color_strength * 210.0f), 0.0f, 210.0f);
@@ -137,9 +147,9 @@ __kernel void render(__global Camera * camera, __global WorldProps * props, __gl
 
     } else {
 
-        pixels[pixel_id].x = 0;
-        pixels[pixel_id].y = 0;
-        pixels[pixel_id].z = 0;
+        pixels[pixel_id].x = 25;
+        pixels[pixel_id].y = 25;
+        pixels[pixel_id].z = 25;
 
     }
 }
