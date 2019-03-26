@@ -4,6 +4,7 @@ import pyopencl.cltypes
 import numpy as np
 
 from .camera import Camera
+from .fractals import Fractal
 
 
 class Render:
@@ -20,11 +21,13 @@ class Render:
                  fractal: Fractal,
                  context: cl.Context,
                  width: int = 500, height: int = 500):
+
         self.width = width
         self.height = height
 
         self.camera = camera
         self.context = context
+        self.fractal = fractal
 
         self.buffer = cl.Image(
             context,

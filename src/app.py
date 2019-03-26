@@ -1,5 +1,5 @@
 import pyopencl as cl
-from .fractals import Mandelbox
+from .fractals import Fractal
 
 
 class App:

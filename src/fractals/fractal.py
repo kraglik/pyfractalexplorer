@@ -6,11 +6,19 @@ import numpy as np
 class Fractal:
 
     @abstractmethod
-    def get_default_color(self) -> Tuple[int, int, int]:
+    def get_default_color(self) -> Tuple[float, float, float]:
         raise NotImplementedError
 
     @abstractmethod
-    def set_color(self):
+    def get_color(self) -> Tuple[float, float, float]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_color_cl(self) -> np.void:
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_color(self, color: Tuple[float, float, float]):
         raise NotImplementedError
 
     @abstractmethod
@@ -26,7 +34,7 @@ class Fractal:
         raise NotImplementedError
 
     @abstractmethod
-    def get_default_parameters(self) -> Dict[str, Union[int, float]]:
+    def get_default_parameters(self) -> Dict[str, Union[int, Union[float, int]]]:
         raise NotImplementedError
 
     @abstractmethod
