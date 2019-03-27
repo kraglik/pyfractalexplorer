@@ -14,6 +14,10 @@ Space - up
 
 Left CTRL - down
 
+Q - push current speed to stack
+
+E - restore speed from stack
+
 Mouse - look
 
 Mouse wheel up - increase zoom

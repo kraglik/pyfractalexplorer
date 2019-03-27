@@ -64,6 +64,8 @@ class App:
 
         movement_speed = 0.5
 
+        speed_stack = []
+
         epsilon = self.render.epsilon
 
         key_map = {
@@ -113,6 +115,12 @@ class App:
                         key_map['lctrl'] = True
                     elif event.key == K_SPACE:
                         key_map['space'] = True
+                    elif event.key == K_q:
+                        speed_stack.insert(0, movement_speed)
+                    elif event.key == K_e:
+                        if len(speed_stack) > 0:
+                            movement_speed = speed_stack[0]
+                            speed_stack = speed_stack[1:]
 
                     elif event.key == K_UP:
                         movement_speed *= 2

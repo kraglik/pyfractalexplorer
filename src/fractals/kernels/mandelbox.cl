@@ -12,15 +12,15 @@ typedef struct Hit {
 
 /**********************************************************************************************************************/
 
-float len(float3 * vector) {
+inline float len(float3 * vector) {
     return sqrt(vector->x * vector->x + vector->y * vector->y + vector->z * vector->z);
 }
 
 /**********************************************************************************************************************/
 
-float square(float x) { return x*x; }
+inline float square(float x) { return x*x; }
 
-void fold_box(float3 *v) {
+inline void fold_box(float3 *v) {
 
     v->x = COMPONENT_FOLD(v->x);
     v->y = COMPONENT_FOLD(v->y);
@@ -28,7 +28,7 @@ void fold_box(float3 *v) {
 
 }
 
-void fold_sphere(float3 *v, float r2, float r_min_2, float r_fixed_2)
+inline void fold_sphere(float3 *v, float r2, float r_min_2, float r_fixed_2)
 {
     if (r2 < r_min_2)
         *v *= r_fixed_2 / r_min_2;
@@ -118,7 +118,7 @@ Hit trace_ray(__global Camera * camera,
 
     float m = camera->shift_multiplier;
 
-    Ray ray = {.pos = camera->pos + camera->right * x * m + camera->up * y * m};
+    Ray ray = {.pos = camera->pos };
 
     float3 initial_pos = camera->pos + camera->right * x + camera->up * y;
 
