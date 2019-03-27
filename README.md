@@ -1,8 +1,10 @@
 # PyFractalExplorer
 
-## Example
+## Examples
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/rY8E3OwOmJo/0.jpg)](https://www.youtube.com/watch?v=rY8E3OwOmJo)
+
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/jOQ5DM4bYTk/0.jpg)](https://www.youtube.com/watch?v=jOQ5DM4bYTk)
 
 ## Controls:
 
