@@ -31,7 +31,7 @@ class Render:
                  width: int = 500, height: int = 500,
                  iteration_limit=16,
                  ray_steps_limit=128,
-                 epsilon=0.0001,
+                 epsilon=0.001,
                  ray_shift_multiplier=1.0):
 
         self.device = device

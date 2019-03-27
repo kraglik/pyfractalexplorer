@@ -146,7 +146,7 @@ __kernel void render(__global Camera * camera,
     float hy = (float)height / 2.0f;
 
     float x = ((float)idX - hx) / hx * ratio;
-    float y = ((float)idY - hy) / hy;
+    float y = -((float)idY - hy) / hy;
 
     Hit hit = trace_ray(camera, quality_props, mandelbox_parameters, x, y);
 

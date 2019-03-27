@@ -10,6 +10,10 @@ S - back
 
 D - right
 
+Space - up
+
+Left CTRL - down
+
 Mouse - look
 
 Mouse wheel up - increase zoom

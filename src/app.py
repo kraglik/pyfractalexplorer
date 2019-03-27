@@ -62,14 +62,18 @@ class App:
     def run(self):
         surface = pygame.pixelcopy.make_surface(self.render.host_buffer[:, :, :3])
 
-        mouse_speed = 0.025
-
-        shift_forward = 0
-        shift_right = 0
-
         movement_speed = 0.5
 
         epsilon = self.render.epsilon
+
+        key_map = {
+            'w': False,
+            'a': False,
+            's': False,
+            'd': False,
+            'lctrl': False,
+            'space': False
+        }
 
         while True:
             time_before_render = time.time()
@@ -98,22 +102,22 @@ class App:
                         return
 
                     if event.key == K_w:
-                        shift_forward += movement_speed
+                        key_map['w'] = True
                     elif event.key == K_s:
-                        shift_forward -= movement_speed
+                        key_map['s'] = True
                     elif event.key == K_a:
-                        shift_right -= movement_speed
+                        key_map['a'] = True
                     elif event.key == K_d:
-                        shift_right += movement_speed
+                        key_map['d'] = True
+                    elif event.key == K_LCTRL:
+                        key_map['lctrl'] = True
+                    elif event.key == K_SPACE:
+                        key_map['space'] = True
 
                     elif event.key == K_UP:
                         movement_speed *= 2
-                        shift_forward *= 2
-                        shift_right *= 2
                     elif event.key == K_DOWN:
                         movement_speed /= 2
-                        shift_forward /= 2
-                        shift_right /= 2
 
                     elif event.key == K_RIGHT:
                         epsilon *= 2
@@ -122,13 +126,17 @@ class App:
 
                 elif event.type == KEYUP:
                     if event.key == K_w:
-                        shift_forward -= movement_speed
+                        key_map['w'] = False
                     elif event.key == K_s:
-                        shift_forward += movement_speed
+                        key_map['s'] = False
                     elif event.key == K_a:
-                        shift_right += movement_speed
+                        key_map['a'] = False
                     elif event.key == K_d:
-                        shift_right -= movement_speed
+                        key_map['d'] = False
+                    elif event.key == K_LCTRL:
+                        key_map['lctrl'] = False
+                    elif event.key == K_SPACE:
+                        key_map['space'] = False
 
                 elif event.type == MOUSEBUTTONDOWN:
                     if event.button == 4:
@@ -140,6 +148,27 @@ class App:
 
             delta = time.time() - time_before_render
 
-            self.camera.position += self.camera.direction * shift_forward * delta
-            self.camera.position += self.camera.right * shift_right * delta
+            shift = np.array([0, 0, 0], dtype=np.float32)
+
+            if key_map['w']:
+                shift += self.camera.direction
+            if key_map['s']:
+                shift -= self.camera.direction
+            if key_map['a']:
+                shift -= self.camera.right
+            if key_map['d']:
+                shift += self.camera.right
+            if key_map['space']:
+                shift += self.camera.up
+            if key_map['lctrl']:
+                shift -= self.camera.up
+
+            shift_l = np.linalg.norm(shift)
+
+            if shift_l > 0:
+                shift /= shift_l
+
+            shift *= delta * movement_speed
+
+            self.camera.position += shift
             self.render.epsilon = epsilon / self.camera.zoom

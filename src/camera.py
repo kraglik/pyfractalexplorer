@@ -143,5 +143,5 @@ class Camera:
             )
         )
 
-        self._pitch(look_up_rads)
+        self._pitch(-look_up_rads)
         self._yaw(-look_right_rads)
