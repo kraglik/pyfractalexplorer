@@ -79,6 +79,12 @@ class Render:
             self._quality_props_dtype.itemsize
         )
 
+        self._fractal_color_buffer = cl.Buffer(
+            self.context,
+            cl.mem_flags.READ_ONLY,
+            cl.cltypes.uchar3.itemsize
+        )
+
         self.sync_with_device()
 
     def resize(self, width, height):
@@ -103,11 +109,24 @@ class Render:
 
         cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)
 
+        color = np.array([self.fractal.get_color() + (0,)], dtype=cl.cltypes.uchar3)
+        cl.enqueue_copy(self.queue, self._fractal_color_buffer, color)
+
     def render(self):
         self.sync_with_device()
         self.camera.sync_with_device()
 
-        self.fractal.render(self._quality_props_buffer, self._image_buffer, self.camera.buffer)
+        self.fractal.render_function(
+            self.queue,
+            self._image_buffer.shape,
+            None,
+            self.camera.buffer,
+            self._quality_props_buffer,
+            self.fractal.get_parameters_buffer(),
+            self._fractal_color_buffer,
+            self._image_buffer
+        )
+
         cl.enqueue_copy(
             self.queue,
             self._host_image_buffer,

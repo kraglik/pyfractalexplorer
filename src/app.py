@@ -62,7 +62,8 @@ class App:
     def run(self):
         surface = pygame.pixelcopy.make_surface(self.render.host_buffer[:, :, :3])
 
-        movement_speed = 0.5
+        default_movement_speed = 0.5
+        movement_speed = default_movement_speed
 
         speed_stack = []
 
@@ -121,6 +122,8 @@ class App:
                         if len(speed_stack) > 0:
                             movement_speed = speed_stack[0]
                             speed_stack = speed_stack[1:]
+                        else:
+                            movement_speed = default_movement_speed
 
                     elif event.key == K_UP:
                         movement_speed *= 2

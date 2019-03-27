@@ -24,57 +24,83 @@ class Mandelbox(Fractal):
     ])
 
     # ---------------------------------------------------------------------------------------------------------------- #
-
-    def _build_kernel(self, core_types_decl: List[str]):
-        mandelbox_parameters_dtype, mandelbox_parameters_decl = cl.tools.match_dtype_to_c_struct(
-            self.device,
-            "MandelboxParameters",
-            self.mandelbox_parameters
-        )
-
-        self._mandelbox_parameters_dtype = cl.tools.get_or_register_dtype(
-            "MandelboxParameters",
-            mandelbox_parameters_dtype
-        )
-
-        self._kernel = None
-        self._kernel = mandelbox_parameters_decl + '\n'.join(core_types_decl) + self.get_kernel_code()
-
-        self._program = cl.Program(self.context, self._kernel).build()
-
-    def _set_parameters(self, parameters, color):
-        if parameters is not None:
-            assert set(parameters.keys()) == set(self._default_parameters.keys())
-            self._parameters = parameters
-
-        else:
-            self._parameters = self._default_parameters
-
-        self.set_color(color if color is not None else self.get_default_color())
-
-    def _create_parameters_buffer(self):
-        mandelbox_parameters_instance = np.array([(
+    def get_parameters_values(self):
+        return (
             self._parameters["r_min"],
             self._parameters["escape_time"],
             self._parameters["scale"]
-        )], dtype=self._mandelbox_parameters_dtype)[0]
-
-        self._mandelbox_parameters_buffer = cl.Buffer(
-            self.context,
-            cl.mem_flags.READ_ONLY,
-            self._mandelbox_parameters_dtype.itemsize
         )
 
-        cl.enqueue_copy(self.queue, self._mandelbox_parameters_buffer, mandelbox_parameters_instance)
+    def get_check_circumscribed_figure_code(self):
+        return """
+        inline bool outside_of_circumscribed_figure(float3 pos) {
+            return pos.x < -5.1f || pos.x > 5.1f ||
+                   pos.y < -5.1f || pos.y > 5.1f ||
+                   pos.z < -5.1f || pos.z > 5.1f;  
+        }
+        """
 
-    # ---------------------------------------------------------------------------------------------------------------- #
+    def get_distance_function_code(self):
+        return """
+        inline float square(float x) { return x*x; }
 
-    def get_kernel_code(self):
-        if self._kernel is None:
-            with open("src/fractals/kernels/mandelbox.cl", 'r') as f:
-                self._kernel = f.read()
-
-        return self._kernel
+        inline void fold_box(float3 *v) {
+        
+            v->x = COMPONENT_FOLD(v->x);
+            v->y = COMPONENT_FOLD(v->y);
+            v->z = COMPONENT_FOLD(v->z);
+        
+        }
+        
+        inline void fold_sphere(float3 *v, float r2, float r_min_2, float r_fixed_2)
+        {
+            if (r2 < r_min_2)
+                *v *= r_fixed_2 / r_min_2;
+            else
+            if (r2 < r_fixed_2)
+                *v *= r_fixed_2 / r2;
+        }
+        
+        inline float distance(float3 *p0,
+                                 __global QualityProps * quality_props,
+                                 __global MandelboxParameters * parameters) {
+            float3 p = *p0;
+        
+            float r_min_2 = square(parameters->r_min);
+            float r_fixed_2 = 1.0f;
+            float escape = square(parameters->escape_time);
+            float d_factor = 1;
+            float r2 = -1;
+            float scale = parameters->scale;
+        
+            float c1 = fabs(scale - 1.0f);
+            float c2 = pow(fabs(scale), 1 - quality_props->iteration_limit);
+        
+            for (int i = 0; i < quality_props->iteration_limit; i++) {
+                fold_box(&p);
+                r2 = dot(p, p);
+        
+                fold_sphere(&p, r2, r_min_2, r_fixed_2);
+        
+                p *= scale;
+                p += *p0;
+        
+                if (r2 < r_min_2)
+                    d_factor *= (r_fixed_2 / r_min_2);
+                else if (r2<r_fixed_2)
+                    d_factor *= (r_fixed_2 / r2);
+        
+                d_factor = d_factor * fabs(scale) + 1.0;
+        
+                if ( r2 > escape )
+                    break;
+            }
+        
+            r2 = sqrt(dot(p, p));
+        
+            return (r2 - c1) / d_factor - c2;
+        }
+        """
 
     def get_name(self):
         return "Mandelbox"
@@ -96,16 +122,10 @@ class Mandelbox(Fractal):
         self._color["x"], self._color["y"], self._color["z"] = color
 
     def get_default_color(self):
-        return 0.8980392156862745, 0.8235294117647058, 0.7058823529411765
+        return 229, 210, 180
 
-    def render(self, quality_props_buffer: cl.Buffer, image_buffer: cl.Image, camera_buffer: cl.Buffer):
-        self._program.render(
-            self.queue,
-            image_buffer.shape,
-            None,
-            camera_buffer,
-            quality_props_buffer,
-            self._mandelbox_parameters_buffer,
-            image_buffer
-        )
+    def get_parameters_typename(self):
+        return "MandelboxParameters"
 
+    def get_numpy_dtype_parameters(self):
+        return self.mandelbox_parameters
