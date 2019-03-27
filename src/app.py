@@ -46,7 +46,6 @@ class App:
             self.context,
             self.queue,
             self.camera,
-            fractals[0], None, None,
             width=self.width,
             height=self.height
         )
@@ -78,6 +77,10 @@ class App:
             'space': False
         }
 
+        fractal_index = 1
+
+        self.render.fractal = self.render.fractals[fractal_index]
+
         while True:
             time_before_render = time.time()
 
@@ -101,10 +104,16 @@ class App:
                     )
 
                 elif event.type == KEYDOWN:
+
                     if event.key == K_ESCAPE:
                         return
 
-                    if event.key == K_w:
+                    if event.key == K_PAGEUP:
+                        fractal_index += (fractal_index + 1) % len(self.render.fractals)
+                    elif event.key == K_PAGEDOWN:
+                        fractal_index = (fractal_index - 1) % len(self.render.fractals)
+
+                    elif event.key == K_w:
                         key_map['w'] = True
                     elif event.key == K_s:
                         key_map['s'] = True
@@ -183,3 +192,4 @@ class App:
 
             self.camera.position += shift
             self.render.epsilon = epsilon / self.camera.zoom
+            self.render.fractal = self.render.fractals[fractal_index]

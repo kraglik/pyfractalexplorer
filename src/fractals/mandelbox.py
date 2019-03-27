@@ -1,10 +1,8 @@
 from copy import copy
-from typing import Optional, List, Tuple, Dict
 
+import numpy as np
 import pyopencl as cl
 import pyopencl.cltypes
-import pyopencl.tools
-import numpy as np
 
 from .fractal import Fractal
 
@@ -64,8 +62,8 @@ class Mandelbox(Fractal):
         }
         
         inline float distance(float3 *p0,
-                                 __global QualityProps * quality_props,
-                                 __global MandelboxParameters * parameters) {
+                              __global QualityProps * quality_props,
+                              __global MandelboxParameters * parameters) {
             float3 p = *p0;
         
             float r_min_2 = square(parameters->r_min);

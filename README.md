@@ -34,9 +34,9 @@ up arrow - increase movement speed
 
 down arrow - decrease movement speed
 
-Esc - exit
+PageUp / PageDown - change to another fractal
 
-Only Mandelbox is implemented at the moment
+Esc - exit
 
 
 ## System requirements

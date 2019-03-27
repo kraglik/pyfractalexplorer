@@ -1,14 +1,11 @@
-from abc import abstractmethod
 import pyopencl as cl
 import pyopencl.cltypes
 import pyopencl.tools
-from OpenGL.GL import *
-from OpenGL.GLU import *
 import numpy as np
 from typing import Optional, Dict, Tuple
 
 from .camera import Camera
-from .fractals import Fractal
+from .fractals import fractals
 
 
 class Render:
@@ -25,13 +22,10 @@ class Render:
                  context: cl.Context,
                  queue: cl.CommandQueue,
                  camera: Camera,
-                 fractal_class: type,
-                 fractal_parameters: Optional[Dict],
-                 fractal_color: Optional[Tuple[float, float, float]],
                  width: int = 500, height: int = 500,
                  iteration_limit=16,
                  ray_steps_limit=128,
-                 epsilon=0.001,
+                 epsilon=0.01,
                  ray_shift_multiplier=1.0):
 
         self.device = device
@@ -59,11 +53,15 @@ class Render:
             self._quality_props_dtype
         )
 
-        self.fractal = fractal_class(
-            device, context, queue,
-            [camera.cl_type_declaration, self._quality_props_decl],
-            fractal_parameters, fractal_color
-        )
+        self.fractals = [
+            fractal_class(
+                device, context, queue,
+                [camera.cl_type_declaration, self._quality_props_decl]
+            )
+            for fractal_class in fractals
+        ]
+
+        self.fractal = self.fractals[0]
 
         self._host_image_buffer = np.zeros((self.width, self.height, 4), dtype=np.uint8)
         self._image_buffer = cl.Image(
