@@ -142,4 +142,4 @@ class App:
 
             self.camera.position += self.camera.direction * shift_forward * delta
             self.camera.position += self.camera.right * shift_right * delta
-            self.render.epsilon = epsilon
+            self.render.epsilon = epsilon / self.camera.zoom
