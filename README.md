@@ -38,7 +38,7 @@ up arrow - increase movement speed
 
 down arrow - decrease movement speed
 
-PageUp / PageDown - change to another fractal
+PageUp / PageDown - change fractal
 
 LESS ( < ) / GREATER ( > ) - increase or decrease amplitude
 
