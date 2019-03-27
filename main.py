@@ -1,5 +1,4 @@
-import pyopencl
 from src import App
 
 
-app = App(width=800, height=800)
+app = App(width=500, height=500)

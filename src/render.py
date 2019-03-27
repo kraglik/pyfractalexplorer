@@ -29,7 +29,7 @@ class Render:
                  fractal_parameters: Optional[Dict],
                  fractal_color: Optional[Tuple[float, float, float]],
                  width: int = 500, height: int = 500,
-                 iteration_limit=128,
+                 iteration_limit=16,
                  ray_steps_limit=128,
                  epsilon=0.0001,
                  ray_shift_multiplier=1.0):

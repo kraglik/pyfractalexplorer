@@ -130,7 +130,7 @@ Hit trace_ray(__global Camera * camera,
 __kernel void render(__global Camera * camera,
                      __global QualityProps * quality_props,
                      __global MandelboxParameters * mandelbox_parameters,
-                     __read_write image2d_t output) {
+                     __write_only image2d_t output) {
 
     int idX = get_global_id(0);
     int idY = get_global_id(1);

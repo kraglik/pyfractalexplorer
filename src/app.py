@@ -1,5 +1,6 @@
 import pyopencl as cl
 import pygame
+import time
 from pygame.locals import *
 import numpy as np
 
@@ -64,11 +65,13 @@ class App:
         shift_forward = 0
         shift_right = 0
 
-        movement_speed = 0.05
+        movement_speed = 0.5
 
         epsilon = self.render.epsilon
 
         while True:
+            time_before_render = time.time()
+
             self.render.render()
             pygame.surfarray.blit_array(surface, self.render.host_buffer[:, :, :3])
             self.screen.blit(surface, (0, 0))
@@ -125,6 +128,8 @@ class App:
                     elif event.key == K_d:
                         shift_right -= movement_speed
 
-            self.camera.position += self.camera.direction * shift_forward
-            self.camera.position += self.camera.right * shift_right
+            delta = time.time() - time_before_render
+
+            self.camera.position += self.camera.direction * shift_forward * delta
+            self.camera.position += self.camera.right * shift_right * delta
             self.render.epsilon = epsilon
