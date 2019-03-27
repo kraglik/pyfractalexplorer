@@ -1,5 +1,3 @@
-#define COMPONENT_FOLD(x) ( (x>1) ? (2-x) : ((x<-1) ?(-2-x):x))
-
 typedef struct Ray {
     float3 pos, dir;
 } Ray;

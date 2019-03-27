@@ -42,6 +42,8 @@ class Mandelbox(Fractal):
 
     def get_distance_function_code(self):
         return """
+        #define COMPONENT_FOLD(x) ( (x>1) ? (2-x) : ((x<-1) ?(-2-x):x))
+        
         inline float square(float x) { return x*x; }
 
         inline void fold_box(float3 *v) {
