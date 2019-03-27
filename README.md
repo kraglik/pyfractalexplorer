@@ -46,6 +46,8 @@ T - enable time dependency (cos(time) * amplitude)
 
 P - take screenshot
 
+= / - to increase / decrease raymarcher iteration limit (regulates quality)
+
 Esc - exit
 
 ## Available fractals
