@@ -2,11 +2,11 @@
 
 ## Examples
 
-Static fractals:
+Static fractals (YouTube):
 
-[![Exploring the mandelbox](https://img.youtube.com/vi/rY8E3OwOmJo/0.jpg)](https://www.youtube.com/watch?v=rY8E3OwOmJo)
+[![Exploring the mandelbox](https://img.youtube.com/vi/rY8E3OwOmJo/1.jpg)](https://www.youtube.com/watch?v=rY8E3OwOmJo)
 
-Animated fractals:
+Animated fractals (YouTube):
 
 [![Animated fractals](https://img.youtube.com/vi/jOQ5DM4bYTk/1.jpg)](https://www.youtube.com/watch?v=jOQ5DM4bYTk)
 
