@@ -12,6 +12,12 @@ D - right
 
 Mouse - look
 
+Mouse wheel up - increase zoom
+
+Mouse wheel down - decrease zoom
+
+Mouse wheel - set zoom to 1.0
+
 left arrow - increase accuracy (lower epsilon, more details)
 
 right arrow - decrease accuracy

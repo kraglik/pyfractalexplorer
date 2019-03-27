@@ -1,8 +1,12 @@
+import math
+
 import numpy as np
 import pyopencl as cl
 import pyopencl.cltypes
 import pyopencl.tools
 import os
+
+from .quaternion import Quaternion
 
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -15,8 +19,7 @@ class Camera:
         ("dir", cl.cltypes.float3),
         ("up", cl.cltypes.float3),
         ("right", cl.cltypes.float3),
-        ("view_plane_distance", cl.cltypes.float),
-        ("ratio", cl.cltypes.float),
+        ("zoom", cl.cltypes.float),
         ("shift_multiplier", cl.cltypes.float)
     ])
 
@@ -28,9 +31,9 @@ class Camera:
                  direction=np.array([1, 0, 0], dtype=cl.cltypes.float),
                  up=np.array([0, 1, 0], dtype=cl.cltypes.float),
                  target=None,
-                 view_plane_distance=1.0,
-                 ratio=1.0,
-                 shift_multiplier=0.0001):
+                 zoom=1.0,
+                 shift_multiplier=0.0001,
+                 mouse_speed=0.2):
 
         self.device = device
         self.context = context
@@ -48,9 +51,9 @@ class Camera:
         self.up = np.cross(self.right, self.direction)
         self.up /= np.linalg.norm(self.up)
 
-        self.view_plane_distance = view_plane_distance
-        self.ratio = ratio
+        self.zoom = zoom
         self.shift_multiplier = shift_multiplier
+        self.mouse_speed = mouse_speed
 
         self._camera_dtype, self._camera_decl = cl.tools.match_dtype_to_c_struct(
             self.device,
@@ -81,8 +84,21 @@ class Camera:
         self.up = np.cross(self.right, self.direction)
         self.up /= np.linalg.norm(self.up)
 
-    def zoom(self, value):
-        self.view_plane_distance *= value
+    def _pitch(self, radians):
+        q = Quaternion.from_axis_angle(self.right, radians / self.zoom)
+        q *= Quaternion(*list(self.direction), 0.0)
+
+        forward = np.array([q.x, q.y, q.z])
+
+        self.look_at(self.position + forward)
+
+    def _yaw(self, radians):
+        q = Quaternion.from_axis_angle(self.world_up, radians / self.zoom)
+        q *= Quaternion(*list(self.direction), 0.0)
+
+        forward = np.array([q.x, q.y, q.z])
+
+        self.look_at(self.position + forward)
 
     def sync_with_device(self):
         camera_instance = np.array([(
@@ -90,8 +106,7 @@ class Camera:
             tuple(self.direction) + (0,),
             tuple(self.up) + (0,),
             tuple(self.right) + (0,),
-            self.view_plane_distance,
-            self.ratio,
+            self.zoom,
             self.shift_multiplier
         )], dtype=self._camera_dtype)[0]
 
@@ -105,9 +120,28 @@ class Camera:
     def buffer(self):
         return self._buffer
 
-    def rotate(self, x=0.0, y=0.0):
-        self.look_at(self.position + self.direction + self.right * x)
+    def rotate(self, dx=0.0, dy=0.0):
+        deg_to_rad = math.pi / 180.0
 
-        up = np.cross(self.right, self.direction)
+        look_right_rads = self.mouse_speed * dx * deg_to_rad
+        look_up_rads = self.mouse_speed * dy * deg_to_rad
 
-        self.look_at(self.position + self.direction + up * y)
+        current_dec = math.acos(self.direction[1])
+        requested_dec = current_dec - look_up_rads
+
+        min_up_tilt_deg = 0.10
+        zenith_max_dec = min_up_tilt_deg * deg_to_rad
+        zenith_min_dec = (180.0 - min_up_tilt_deg) * deg_to_rad
+
+        look_up_rads = (
+            (current_dec - zenith_min_dec)
+            if requested_dec > zenith_min_dec
+            else (
+                (current_dec - zenith_max_dec)
+                if requested_dec < zenith_max_dec
+                else look_up_rads
+            )
+        )
+
+        self._pitch(look_up_rads)
+        self._yaw(-look_right_rads)

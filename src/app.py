@@ -1,3 +1,5 @@
+import math
+
 import pyopencl as cl
 import pygame
 import time
@@ -87,8 +89,8 @@ class App:
                     pygame.mouse.set_pos((self.width / 2, self.height / 2))
 
                     self.camera.rotate(
-                        (mouse_position[0] - self.width // 2) / (self.width // 2) * mouse_speed,
-                        (mouse_position[1] - self.height // 2) / (self.height // 2) * mouse_speed
+                        (mouse_position[0] - self.width // 2) / (self.width // 2),
+                        (mouse_position[1] - self.height // 2) / (self.height // 2)
                     )
 
                 elif event.type == KEYDOWN:
@@ -127,6 +129,14 @@ class App:
                         shift_right += movement_speed
                     elif event.key == K_d:
                         shift_right -= movement_speed
+
+                elif event.type == MOUSEBUTTONDOWN:
+                    if event.button == 4:
+                        self.camera.zoom *= 1.1
+                    elif event.button == 5:
+                        self.camera.zoom *= 1 / 1.1
+                    elif event.button == 2:
+                        self.camera.zoom = 1.0
 
             delta = time.time() - time_before_render
 

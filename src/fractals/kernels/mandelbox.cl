@@ -37,7 +37,7 @@ void fold_sphere(float3 *v, float r2, float r_min_2, float r_fixed_2)
         *v *= r_fixed_2 / r2;
 }
 
-float mandelbox_distance(float3 *p0,
+inline float mandelbox_distance(float3 *p0,
                          __global QualityProps * quality_props,
                          __global MandelboxParameters * mandelbox_parameters) {
     float3 p = *p0;
@@ -122,7 +122,7 @@ Hit trace_ray(__global Camera * camera,
 
     float3 initial_pos = camera->pos + camera->right * x + camera->up * y;
 
-    ray.dir = normalize(camera->dir * camera->view_plane_distance + initial_pos - camera->pos);
+    ray.dir = normalize(camera->dir * camera->zoom + initial_pos - camera->pos);
 
     return march_ray(&ray, quality_props, mandelbox_parameters, 0.0f);
 }
@@ -138,12 +138,14 @@ __kernel void render(__global Camera * camera,
     int width = get_global_size(0);
     int height = get_global_size(1);
 
+    float ratio = (float) width / (float) height;
+
     int pixel_id = idY * width + idX;
 
     float hx = (float)width / 2.0f;
     float hy = (float)height / 2.0f;
 
-    float x = ((float)idX - hx) / hx * camera->ratio;
+    float x = ((float)idX - hx) / hx * ratio;
     float y = ((float)idY - hy) / hy;
 
     Hit hit = trace_ray(camera, quality_props, mandelbox_parameters, x, y);
