@@ -17,7 +17,8 @@ class App:
                  device_id=0,
                  device_type=cl.device_type.ALL,
                  width=500,
-                 height=500):
+                 height=500,
+                 fullscreen=False):
 
         self.width = width
         self.height = height
@@ -33,13 +34,20 @@ class App:
 
         pygame.init()
 
-        self.screen = pygame.display.set_mode((self.width, self.height))
+        if fullscreen:
+            info = pygame.display.Info()
+
+            self.width, self.height = info.current_w, info.current_h
+
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
+        else:
+            self.screen = pygame.display.set_mode((self.width, self.height))
 
         pygame.display.set_caption('Fractal Explorer')
         pygame.mouse.set_visible(0)
 
         self.camera = Camera(
-            self.device, self.context, self.queue
+            self.device, self.context, self.queue, mouse_speed=5.0
         )
         self.render = Render(
             self.device,
@@ -59,7 +67,9 @@ class App:
         self.render.save(path)
 
     def run(self):
-        surface = pygame.pixelcopy.make_surface(self.render.host_buffer[:, :, :3])
+        surface = pygame.pixelcopy.make_surface(
+            self.render.host_buffer.reshape((self.width, self.height, 4))[:, :, :3]
+        )
 
         default_movement_speed = 0.5
         movement_speed = default_movement_speed
@@ -77,15 +87,36 @@ class App:
             'space': False
         }
 
-        fractal_index = 1
+        fractal_index = 0
+
+        data = [{
+            "movement_speed": default_movement_speed,
+            "epsilon": epsilon,
+            "position": fractal.get_initial_camera_position(),
+            "target": fractal.get_initial_camera_target()
+        } for fractal in self.render.fractals]
 
         self.render.fractal = self.render.fractals[fractal_index]
+        self.camera.position = data[fractal_index]["position"]
+        self.camera.look_at(data[fractal_index]["target"])
+
+        initial_time = time.time()
 
         while True:
             time_before_render = time.time()
 
+            self.render.fractal_by_name["Kaleido Fractal"].set_parameters(
+                {
+                    "time": float(time.time() - initial_time)
+                },
+                self.render.fractal_by_name["Kaleido Fractal"].get_color()
+            )
+
             self.render.render()
-            pygame.surfarray.blit_array(surface, self.render.host_buffer[:, :, :3])
+            pygame.surfarray.blit_array(
+                surface,
+                self.render.host_buffer.reshape((self.width, self.height, 4))[:, :, :3]
+            )
             self.screen.blit(surface, (0, 0))
 
             pygame.display.flip()
@@ -108,10 +139,35 @@ class App:
                     if event.key == K_ESCAPE:
                         return
 
-                    if event.key == K_PAGEUP:
-                        fractal_index += (fractal_index + 1) % len(self.render.fractals)
+                    elif event.key == K_PAGEUP:
+                        data[fractal_index] = {
+                            "movement_speed": default_movement_speed,
+                            "epsilon": epsilon,
+                            "position": self.camera.position,
+                            "target": self.camera.position + self.camera.direction
+                        }
+
+                        fractal_index = (fractal_index + 1) % len(data)
+
+                        movement_speed = data[fractal_index]["movement_speed"]
+                        epsilon = data[fractal_index]["epsilon"]
+                        self.camera.position = data[fractal_index]["position"]
+                        self.camera.look_at(data[fractal_index]["target"])
+
                     elif event.key == K_PAGEDOWN:
-                        fractal_index = (fractal_index - 1) % len(self.render.fractals)
+                        data[fractal_index] = {
+                            "movement_speed": default_movement_speed,
+                            "epsilon": epsilon,
+                            "position": self.camera.position,
+                            "target": self.camera.position + self.camera.direction
+                        }
+
+                        fractal_index = (fractal_index - 1) % len(data)
+
+                        movement_speed = data[fractal_index]["movement_speed"]
+                        epsilon = data[fractal_index]["epsilon"]
+                        self.camera.position = data[fractal_index]["position"]
+                        self.camera.look_at(data[fractal_index]["target"])
 
                     elif event.key == K_w:
                         key_map['w'] = True

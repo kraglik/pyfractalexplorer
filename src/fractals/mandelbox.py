@@ -61,10 +61,10 @@ class Mandelbox(Fractal):
                 *v *= r_fixed_2 / r2;
         }
         
-        inline float distance(float3 *p0,
+        inline float fractal_distance(float3 point,
                               __global QualityProps * quality_props,
                               __global MandelboxParameters * parameters) {
-            float3 p = *p0;
+            float3 p = point;
         
             float r_min_2 = square(parameters->r_min);
             float r_fixed_2 = 1.0f;
@@ -83,7 +83,7 @@ class Mandelbox(Fractal):
                 fold_sphere(&p, r2, r_min_2, r_fixed_2);
         
                 p *= scale;
-                p += *p0;
+                p += point;
         
                 if (r2 < r_min_2)
                     d_factor *= (r_fixed_2 / r_min_2);
@@ -129,3 +129,12 @@ class Mandelbox(Fractal):
 
     def get_numpy_dtype_parameters(self):
         return self.mandelbox_parameters
+
+    def get_initial_camera_position(self):
+        return np.array([-10, 0, 0], dtype=np.float32)
+
+    def get_initial_camera_target(self):
+        return np.array([0, 0, 0], dtype=np.float32)
+
+    def get_default_iterations(self):
+        return 16

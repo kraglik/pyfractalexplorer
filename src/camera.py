@@ -33,7 +33,7 @@ class Camera:
                  target=None,
                  zoom=1.0,
                  shift_multiplier=0.0001,
-                 mouse_speed=0.2):
+                 mouse_speed=2.0):
 
         self.device = device
         self.context = context
@@ -129,16 +129,16 @@ class Camera:
         current_dec = math.acos(self.direction[1])
         requested_dec = current_dec - look_up_rads
 
-        min_up_tilt_deg = 0.10
-        zenith_max_dec = min_up_tilt_deg * deg_to_rad
-        zenith_min_dec = (180.0 - min_up_tilt_deg) * deg_to_rad
+        min_up_tilt_deg = 1
+        zenith_min_dec = min_up_tilt_deg * deg_to_rad
+        zenith_max_dec = (180.0 - min_up_tilt_deg) * deg_to_rad
 
         look_up_rads = (
-            (current_dec - zenith_min_dec)
-            if requested_dec > zenith_min_dec
+            zenith_min_dec
+            if requested_dec < zenith_min_dec
             else (
-                (current_dec - zenith_max_dec)
-                if requested_dec < zenith_max_dec
+                zenith_max_dec
+                if requested_dec > zenith_max_dec
                 else look_up_rads
             )
         )

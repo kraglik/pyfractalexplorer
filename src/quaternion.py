@@ -19,7 +19,7 @@ class Quaternion:
         )
 
     @staticmethod
-    def from_axis_angle(axis: np.array, w):
+    def from_axis_angle(axis: np.array, w: float):
         x, y, z = list(axis)
 
         sin_h_w = math.sin(w * 0.5)

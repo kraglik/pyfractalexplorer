@@ -23,7 +23,7 @@ class Render:
                  queue: cl.CommandQueue,
                  camera: Camera,
                  width: int = 500, height: int = 500,
-                 iteration_limit=16,
+                 iteration_limit=None,
                  ray_steps_limit=128,
                  epsilon=0.01,
                  ray_shift_multiplier=1.0):
@@ -61,14 +61,15 @@ class Render:
             for fractal_class in fractals
         ]
 
+        self.fractal_by_name = {fractal.get_name(): fractal for fractal in self.fractals}
+
         self.fractal = self.fractals[0]
 
-        self._host_image_buffer = np.zeros((self.width, self.height, 4), dtype=np.uint8)
-        self._image_buffer = cl.Image(
+        self._host_image_buffer = np.zeros(self.width * self.height * 4, dtype=np.uint8)
+        self._image_buffer = cl.Buffer(
             self.context,
-            cl.mem_flags.READ_WRITE,
-            cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8),
-            shape=(self.width, self.height)
+            cl.mem_flags.READ_ONLY,
+            self._host_image_buffer.nbytes
         )
 
         self._quality_props_buffer = cl.Buffer(
@@ -89,17 +90,16 @@ class Render:
         self.width = max(1, width)
         self.height = max(1, height)
 
-        self._host_image_buffer = np.zeros((self.width, self.height, 4), dtype=np.uint8)
-        self._image_buffer = cl.Image(
+        self._host_image_buffer = np.zeros(self.width * self.height * 4, dtype=np.uint8)
+        self._image_buffer = cl.Buffer(
             self.context,
-            cl.mem_flags.READ_WRITE,
-            cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8),
-            shape=(self.width, self.height)
+            cl.mem_flags.READ_ONLY,
+            self._host_image_buffer.nbytes
         )
 
     def sync_with_device(self):
         quality_props_instance = np.array([(
-            self.iteration_limit,
+            self.iteration_limit if self.iteration_limit is not None else self.fractal.get_default_iterations(),
             self.ray_steps_limit,
             self.epsilon,
             self.ray_shift_multiplier
@@ -114,9 +114,9 @@ class Render:
         self.sync_with_device()
         self.camera.sync_with_device()
 
-        self.fractal.render_function(
+        render_event = self.fractal.render_function(
             self.queue,
-            self._image_buffer.shape,
+            (self.width, self.height),
             None,
             self.camera.buffer,
             self._quality_props_buffer,
@@ -125,11 +125,12 @@ class Render:
             self._image_buffer
         )
 
+        render_event.wait()
+
         cl.enqueue_copy(
             self.queue,
             self._host_image_buffer,
-            self._image_buffer,
-            origin=(0, 0), region=(self.width, self.height)
+            self._image_buffer
         )
 
     def save(self, path):
@@ -137,7 +138,7 @@ class Render:
 
         image_array = np.zeros((self.width, self.height, 4), dtype=np.uint8)
 
-        cl.enqueue_copy(self.queue, image_array, self._image_buffer, origin=(0, 0), region=(self.width, self.height))
+        cl.enqueue_copy(self.queue, image_array, self._image_buffer)
 
         image = Image.fromarray(image_array)
         image.save(path)

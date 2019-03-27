@@ -36,25 +36,25 @@ class Mandelbulb(Fractal):
         
         inline void pow_vec(float3 *v, float3 *result, float power) {
             float ph = atan(v->y / v->x);
-            float th = acos(v->z / len(v));
+            float th = acos(v->z / fast_length(*v));
         
             result->x = native_sin(power * th) * native_cos(power * ph);
             result->y = native_sin(power * th) * native_sin(power * ph);
             result->z = native_cos(power * th);
             
-            *result *= pow(len(v), power);
+            *result *= pow(fast_length(*v), power);
         }
         
-        inline float2 iterate_z(float dr, float3 z, float3 *c, float power, int limit) {
+        inline float2 iterate_z(float dr, float3 z, float3 c, float power, int limit) {
             float2 pair = { 0.0f, dr };
         
             for (int i = 0;; i++) {
         
-                float r = len(&z);
+                float r = fast_length(z);
                 float3 zn;
                 pow_vec(&z, &zn, power);
                 
-                zn += *c;
+                zn += c;
         
                 if (i > limit || r > 2.0f) {
         
@@ -74,11 +74,11 @@ class Mandelbulb(Fractal):
             return pair;
         }
         
-        float distance(float3 *p0,
+        float fractal_distance(float3 point,
                        __global QualityProps * quality_props,
                        __global MandelbulbParameters * parameters) {
                               
-            float2 p = iterate_z(1.0f, *p0, p0, parameters->power, quality_props->iteration_limit);
+            float2 p = iterate_z(1.0f, point, point, parameters->power, quality_props->iteration_limit);
         
             return (0.5f * log(p.x) * p.x) / p.y;
         }
@@ -111,3 +111,12 @@ class Mandelbulb(Fractal):
 
     def get_numpy_dtype_parameters(self):
         return self.mandelbox_parameters
+
+    def get_initial_camera_position(self):
+        return np.array([1.5, 0, 1.5], dtype=np.float32)
+
+    def get_initial_camera_target(self):
+        return np.array([0, 0, 0], dtype=np.float32)
+
+    def get_default_iterations(self):
+        return 32

@@ -1,4 +1,5 @@
 from src import App
 
 
-app = App(width=500, height=500)
+app = App(width=800, height=600)
+# app = App(fullscreen=True)

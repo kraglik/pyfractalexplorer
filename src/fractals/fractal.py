@@ -23,8 +23,7 @@ class Fractal:
         self.queue = queue
 
         self._build_kernel(core_types_decl)
-        self._set_parameters(parameters, color)
-        self._create_parameters_buffer()
+        self.set_parameters(parameters, color)
 
     # PRIVATE METHODS
 
@@ -58,7 +57,7 @@ class Fractal:
 
         self._program = cl.Program(self.context, self._kernel).build()
 
-    def _set_parameters(self, parameters, color):
+    def set_parameters(self, parameters, color):
         if parameters is not None:
             assert set(parameters.keys()) == set(self.get_default_parameters().keys())
             self._parameters = parameters
@@ -68,7 +67,6 @@ class Fractal:
 
         self.set_color(color if color is not None else self.get_default_color())
 
-    def _create_parameters_buffer(self):
         parameters_instance = np.array([self.get_parameters_values()], dtype=self._parameters_dtype)[0]
 
         self._parameters_buffer = cl.Buffer(
@@ -145,3 +143,15 @@ class Fractal:
     @property
     def render_function(self):
         return self._program.render
+
+    @abstractmethod
+    def get_initial_camera_position(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_initial_camera_target(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_default_iterations(self):
+        raise NotImplementedError

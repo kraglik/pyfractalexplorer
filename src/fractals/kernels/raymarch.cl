@@ -12,12 +12,6 @@ $type_declarations
 
 /**********************************************************************************************************************/
 
-inline float len(float3 * vector) {
-    return sqrt(vector->x * vector->x + vector->y * vector->y + vector->z * vector->z);
-}
-
-/**********************************************************************************************************************/
-
 $distance_function_declaration
 
 $outside_of_circumscribed_figure_declaration
@@ -27,13 +21,13 @@ Hit march_ray(Ray *ray,
               __global $fractal_parameters_typename * parameters,
                float path_len) {
 
-    Hit hit = { .distance = INFINITY, .depth = quality_props->ray_steps_limit };
+    Hit hit = { .distance = 1e20f, .depth = quality_props->ray_steps_limit };
     float3 temp;
 
     float epsilon = quality_props->epsilon;
 
     for (int i = 0; i < quality_props->ray_steps_limit; i++) {
-        float d = distance(&ray->pos, quality_props, parameters);
+        float d = fractal_distance(ray->pos, quality_props, parameters);
 
         hit.position = ray->pos + d * ray->dir;
 
@@ -76,7 +70,7 @@ __kernel void render(__global Camera * camera,
                      __global QualityProps * quality_props,
                      __global $fractal_parameters_typename * parameters,
                      __global uchar3 * color,
-                     __write_only image2d_t output) {
+                     __global uchar * output) {
 
     int idX = get_global_id(0);
     int idY = get_global_id(1);
@@ -100,24 +94,25 @@ __kernel void render(__global Camera * camera,
 
     bool outside = outside_of_circumscribed_figure(hit.position);
 
-    uint4 pixel = {hit.depth, hit.depth, hit.depth, 0};
+    __global uchar * pixel = & output[idX * height * 4 + idY * 4];
+
     int2 pixel_pos = {idY, idX};
 
-    if (hit.distance != INFINITY || !outside) {
+    if (hit.distance != 1e20f || !outside) {
 
-        pixel.x = (unsigned int)clamp((color_strength * (float)color->x), 0.0f, (float)color->x);
-        pixel.y = (unsigned int)clamp((color_strength * (float)color->y), 0.0f, (float)color->y);
-        pixel.z = (unsigned int)clamp((color_strength * (float)color->z), 0.0f, (float)color->z);
-        pixel.w = 255;
+        pixel[0] = (unsigned char)clamp((color_strength * (float)color->x), 0.0f, (float)color->x);
+        pixel[1] = (unsigned char)clamp((color_strength * (float)color->y), 0.0f, (float)color->y);
+        pixel[2] = (unsigned char)clamp((color_strength * (float)color->z), 0.0f, (float)color->z);
+        pixel[3] = 255;
 
     } else {
 
-        pixel.x = 55;
-        pixel.y = 55;
-        pixel.z = 55;
-        pixel.w = 0;
+        pixel[0] = 55;
+        pixel[1] = 55;
+        pixel[2] = 55;
+        pixel[3] = 0;
 
     }
 
-    write_imageui(output, pixel_pos, pixel);
+
 }

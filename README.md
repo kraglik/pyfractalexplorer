@@ -1,5 +1,9 @@
 # PyFractalExplorer
 
+## Example
+
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/rY8E3OwOmJo/0.jpg)](https://www.youtube.com/watch?v=rY8E3OwOmJo)
+
 ## Controls:
 
 W - forward
@@ -37,6 +41,12 @@ down arrow - decrease movement speed
 PageUp / PageDown - change to another fractal
 
 Esc - exit
+
+## Available fractals
+1. Mandelbox
+2. Mandelbulb
+3. Sierpinski Triangle
+4. Menger Sponge
 
 
 ## System requirements
