@@ -3,8 +3,10 @@ import math
 import pyopencl as cl
 import pygame
 import time
+from datetime import datetime
 from pygame.locals import *
 import numpy as np
+import os
 
 from .fractals import Fractal, fractals
 from .render import Render
@@ -75,8 +77,11 @@ class App:
         movement_speed = default_movement_speed
 
         speed_stack = []
+        time_enabled = False
 
         epsilon = self.render.epsilon
+
+        amplitude = 0.01
 
         key_map = {
             'w': False,
@@ -93,24 +98,36 @@ class App:
             "movement_speed": default_movement_speed,
             "epsilon": epsilon,
             "position": fractal.get_initial_camera_position(),
-            "target": fractal.get_initial_camera_target()
+            "target": fractal.get_initial_camera_target(),
+            "steps": self.render.ray_steps_limit,
+            "amplitude": amplitude
         } for fractal in self.render.fractals]
 
         self.render.fractal = self.render.fractals[fractal_index]
         self.camera.position = data[fractal_index]["position"]
         self.camera.look_at(data[fractal_index]["target"])
 
-        initial_time = time.time()
+        start_datetime = datetime.now()
+        start_time = time.time()
+
+        screenshots_path = "screenshots/%s/" % (str(start_datetime), )
+        n_screenshots = 0
 
         while True:
             time_before_render = time.time()
+            fractal_changed = False
 
-            self.render.fractal_by_name["Kaleido Fractal"].set_parameters(
-                {
-                    "time": float(time.time() - initial_time)
-                },
-                self.render.fractal_by_name["Kaleido Fractal"].get_color()
-            )
+            data[fractal_index] = {
+                "movement_speed": default_movement_speed,
+                "epsilon": epsilon,
+                "position": self.camera.position,
+                "target": self.camera.position + self.camera.direction,
+                "steps": self.render.ray_steps_limit,
+                "amplitude": amplitude
+            }
+
+            self.render.fractal.set_time(0.0 if not time_enabled else (time.time() - start_time))
+            self.render.fractal.set_amplitude(amplitude)
 
             self.render.render()
             pygame.surfarray.blit_array(
@@ -130,8 +147,8 @@ class App:
                     pygame.mouse.set_pos((self.width / 2, self.height / 2))
 
                     self.camera.rotate(
-                        (mouse_position[0] - self.width // 2) / (self.width // 2),
-                        (mouse_position[1] - self.height // 2) / (self.height // 2)
+                        (mouse_position[0] - self.width // 2) / 250,
+                        (mouse_position[1] - self.height // 2) / 250
                     )
 
                 elif event.type == KEYDOWN:
@@ -139,35 +156,33 @@ class App:
                     if event.key == K_ESCAPE:
                         return
 
+                    elif event.key == K_t:
+                        time_enabled = not time_enabled
+
+                    elif event.key == K_COMMA:
+                        amplitude *= 1 / 1.1
+                    elif event.key == K_PERIOD:
+                        amplitude *= 1.1
+
+                    elif event.key == K_p:
+                        if not os.path.exists(screenshots_path):
+                            os.makedirs(screenshots_path)
+
+                        n_screenshots += 1
+
+                        self.render.save(screenshots_path + str(datetime.now()) + ".png")
+
+                    elif event.key == K_EQUALS:
+                        self.render.ray_steps_limit += 10
+                    elif event.key == K_MINUS:
+                        self.render.ray_steps_limit -= 10
+
                     elif event.key == K_PAGEUP:
-                        data[fractal_index] = {
-                            "movement_speed": default_movement_speed,
-                            "epsilon": epsilon,
-                            "position": self.camera.position,
-                            "target": self.camera.position + self.camera.direction
-                        }
-
                         fractal_index = (fractal_index + 1) % len(data)
-
-                        movement_speed = data[fractal_index]["movement_speed"]
-                        epsilon = data[fractal_index]["epsilon"]
-                        self.camera.position = data[fractal_index]["position"]
-                        self.camera.look_at(data[fractal_index]["target"])
-
+                        fractal_changed = True
                     elif event.key == K_PAGEDOWN:
-                        data[fractal_index] = {
-                            "movement_speed": default_movement_speed,
-                            "epsilon": epsilon,
-                            "position": self.camera.position,
-                            "target": self.camera.position + self.camera.direction
-                        }
-
                         fractal_index = (fractal_index - 1) % len(data)
-
-                        movement_speed = data[fractal_index]["movement_speed"]
-                        epsilon = data[fractal_index]["epsilon"]
-                        self.camera.position = data[fractal_index]["position"]
-                        self.camera.look_at(data[fractal_index]["target"])
+                        fractal_changed = True
 
                     elif event.key == K_w:
                         key_map['w'] = True
@@ -249,3 +264,11 @@ class App:
             self.camera.position += shift
             self.render.epsilon = epsilon / self.camera.zoom
             self.render.fractal = self.render.fractals[fractal_index]
+
+            if fractal_changed:
+                movement_speed = data[fractal_index]["movement_speed"]
+                epsilon = data[fractal_index]["epsilon"]
+                self.camera.position = data[fractal_index]["position"]
+                self.camera.look_at(data[fractal_index]["target"])
+                self.render.ray_steps_limit = data[fractal_index]["steps"]
+                amplitude = data[fractal_index]["amplitude"]

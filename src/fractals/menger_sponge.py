@@ -1,3 +1,4 @@
+import math
 from copy import copy
 
 import numpy as np
@@ -19,7 +20,7 @@ class MengerSponge(Fractal):
     # ---------------------------------------------------------------------------------------------------------------- #
     def get_parameters_values(self):
         return (
-            self._parameters["scale"],
+            self._parameters["scale"] + math.cos(self._time) * self._amplitude,
         )
 
     def get_check_circumscribed_figure_code(self):

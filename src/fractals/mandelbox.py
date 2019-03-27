@@ -1,3 +1,4 @@
+import math
 from copy import copy
 
 import numpy as np
@@ -26,15 +27,15 @@ class Mandelbox(Fractal):
         return (
             self._parameters["r_min"],
             self._parameters["escape_time"],
-            self._parameters["scale"]
+            self._parameters["scale"] + math.cos(self._time) * self._amplitude
         )
 
     def get_check_circumscribed_figure_code(self):
         return """
         inline bool outside_of_circumscribed_figure(float3 pos) {
-            return pos.x < -5.1f || pos.x > 5.1f ||
-                   pos.y < -5.1f || pos.y > 5.1f ||
-                   pos.z < -5.1f || pos.z > 5.1f;  
+            return pos.x < -6.1f || pos.x > 6.1f ||
+                   pos.y < -6.1f || pos.y > 6.1f ||
+                   pos.z < -6.1f || pos.z > 6.1f;  
         }
         """
 

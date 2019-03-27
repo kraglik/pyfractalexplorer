@@ -40,6 +40,12 @@ down arrow - decrease movement speed
 
 PageUp / PageDown - change to another fractal
 
+LESS ( < ) / GREATER ( > ) - increase or decrease amplitude
+
+T - enable time dependency (cos(time) * amplitude)
+
+P - take screenshot
+
 Esc - exit
 
 ## Available fractals

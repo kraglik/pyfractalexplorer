@@ -7,4 +7,4 @@ from .menger_sponge import MengerSponge
 from .kaleido_fractal import KaleidoFractal
 
 
-fractals = [Mandelbox, Mandelbulb, SierpinskiTriangle, MengerSponge, KaleidoFractal]
+fractals = [Mandelbox, Mandelbulb, SierpinskiTriangle, MengerSponge]

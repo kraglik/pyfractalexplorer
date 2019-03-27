@@ -16,22 +16,34 @@ $distance_function_declaration
 
 $outside_of_circumscribed_figure_declaration
 
-Hit march_ray(Ray *ray,
+Hit march_ray(__global Camera * camera,
               __global QualityProps * quality_props,
               __global $fractal_parameters_typename * parameters,
-               float path_len) {
+              float x, float y) {
+
+    Ray ray = {.pos = camera->pos };
+    ray.dir = camera->pos + camera->right * x + camera->up * y + camera->dir * camera->zoom;
+    ray.dir = normalize(ray.dir - camera->pos);
+
+    float path_len = 0.0f;
 
     Hit hit = { .distance = 1e20f, .depth = quality_props->ray_steps_limit };
-    float3 temp;
 
     float epsilon = quality_props->epsilon;
 
     for (int i = 0; i < quality_props->ray_steps_limit; i++) {
-        float d = fractal_distance(ray->pos, quality_props, parameters);
+        float d = fractal_distance(ray.pos, quality_props, parameters);
 
-        hit.position = ray->pos + d * ray->dir;
+        if (d > 1e3f) {
+            hit.depth = quality_props->ray_steps_limit;
+            hit.distance = 1e20f;
 
-        if (d < epsilon && !(isinf(d) || isnan(d))) {
+            break;
+        }
+
+        hit.position = ray.pos + d * ray.dir;
+
+        if (d < epsilon && !isnan(d) && d < 1e10f) {
             hit.distance = path_len;
             hit.depth = i;
 
@@ -39,7 +51,7 @@ Hit march_ray(Ray *ray,
 
         } else {
 
-            ray->pos += ray->dir * d * quality_props->ray_shift_multiplier;
+            ray.pos += ray.dir * d * quality_props->ray_shift_multiplier;
             path_len += d * quality_props->ray_shift_multiplier;
 
         }
@@ -48,23 +60,6 @@ Hit march_ray(Ray *ray,
     return hit;
 }
 
-
-Hit trace_ray(__global Camera * camera,
-              __global QualityProps * quality_props,
-              __global $fractal_parameters_typename * parameters,
-              float x,
-              float y) {
-
-    float m = camera->shift_multiplier;
-
-    Ray ray = {.pos = camera->pos };
-
-    float3 initial_pos = camera->pos + camera->right * x + camera->up * y;
-
-    ray.dir = normalize(camera->dir * camera->zoom + initial_pos - camera->pos);
-
-    return march_ray(&ray, quality_props, parameters, 0.0f);
-}
 
 __kernel void render(__global Camera * camera,
                      __global QualityProps * quality_props,
@@ -88,7 +83,7 @@ __kernel void render(__global Camera * camera,
     float x = ((float)idX - hx) / hx * ratio;
     float y = -((float)idY - hy) / hy;
 
-    Hit hit = trace_ray(camera, quality_props, parameters, x, y);
+    Hit hit = march_ray(camera, quality_props, parameters, x, y);
 
     float color_strength = 1.0f - (float)hit.depth / (float)quality_props->ray_steps_limit;
 
@@ -98,7 +93,7 @@ __kernel void render(__global Camera * camera,
 
     int2 pixel_pos = {idY, idX};
 
-    if (hit.distance != 1e20f || !outside) {
+    if (!outside) {
 
         pixel[0] = (unsigned char)clamp((color_strength * (float)color->x), 0.0f, (float)color->x);
         pixel[1] = (unsigned char)clamp((color_strength * (float)color->y), 0.0f, (float)color->y);

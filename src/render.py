@@ -110,9 +110,11 @@ class Render:
         color = np.array([self.fractal.get_color() + (0,)], dtype=cl.cltypes.uchar3)
         cl.enqueue_copy(self.queue, self._fractal_color_buffer, color)
 
+        self.camera.sync_with_device()
+        self.fractal.sync_with_device()
+
     def render(self):
         self.sync_with_device()
-        self.camera.sync_with_device()
 
         render_event = self.fractal.render_function(
             self.queue,
@@ -136,11 +138,9 @@ class Render:
     def save(self, path):
         from PIL import Image
 
-        image_array = np.zeros((self.width, self.height, 4), dtype=np.uint8)
-
-        cl.enqueue_copy(self.queue, image_array, self._image_buffer)
-
-        image = Image.fromarray(image_array)
+        image = Image\
+            .fromarray(self._host_image_buffer.reshape((self.width, self.height, 4)))\
+            .transpose(Image.ROTATE_90)
         image.save(path)
 
     @property

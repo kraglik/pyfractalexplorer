@@ -22,6 +22,9 @@ class Fractal:
         self.context = context
         self.queue = queue
 
+        self._time = 0.0
+        self._amplitude = 0.0
+
         self._build_kernel(core_types_decl)
         self.set_parameters(parameters, color)
 
@@ -57,6 +60,8 @@ class Fractal:
 
         self._program = cl.Program(self.context, self._kernel).build()
 
+    # PUBLIC METHODS
+
     def set_parameters(self, parameters, color):
         if parameters is not None:
             assert set(parameters.keys()) == set(self.get_default_parameters().keys())
@@ -67,6 +72,9 @@ class Fractal:
 
         self.set_color(color if color is not None else self.get_default_color())
 
+        self.sync_with_device()
+
+    def sync_with_device(self):
         parameters_instance = np.array([self.get_parameters_values()], dtype=self._parameters_dtype)[0]
 
         self._parameters_buffer = cl.Buffer(
@@ -76,8 +84,6 @@ class Fractal:
         )
 
         cl.enqueue_copy(self.queue, self._parameters_buffer, parameters_instance)
-
-    # PUBLIC METHODS
 
     @abstractmethod
     def get_default_color(self) -> Tuple[int, int, int]:
@@ -155,3 +161,9 @@ class Fractal:
     @abstractmethod
     def get_default_iterations(self):
         raise NotImplementedError
+
+    def set_time(self, time: float):
+        self._time = time
+
+    def set_amplitude(self, amplitude: float):
+        self._amplitude = amplitude
