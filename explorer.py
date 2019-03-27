@@ -120,7 +120,7 @@ class WorldProps:
 
 
 # Читаем код ядра
-with open("kernels/mandelbox.cl", 'r') as f:
+with open("src/fractals/kernels/mandelbox.cl", 'r') as f:
     mandelbox_kernel = f.read()
 
 
@@ -131,7 +131,7 @@ camera = Camera()
 world_props = WorldProps()
 
 # Выдлеяем память под итоговую картинку
-image_buffer_host = np.empty((1500, 1500), cl.cltypes.uchar3)
+image_buffer_host = np.empty((5000, 5000), cl.cltypes.uchar3)
 
 # Выделяем память на GPU
 camera_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE, camera.cl.nbytes)

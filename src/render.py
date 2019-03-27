@@ -1,7 +1,11 @@
 from abc import abstractmethod
 import pyopencl as cl
 import pyopencl.cltypes
+import pyopencl.tools
+from OpenGL.GL import *
+from OpenGL.GLU import *
 import numpy as np
+from typing import Optional, Dict, Tuple
 
 from .camera import Camera
 from .fractals import Fractal
@@ -9,7 +13,7 @@ from .fractals import Fractal
 
 class Render:
 
-    quality_props_dtype = np.dtype([
+    quality_props = np.dtype([
         ("iteration_limit", cl.cltypes.int),
         ("ray_steps_limit", cl.cltypes.int),
         ("epsilon", cl.cltypes.float),
@@ -17,31 +21,114 @@ class Render:
     ])
 
     def __init__(self,
-                 camera: Camera,
-                 fractal: Fractal,
+                 device: cl.Device,
                  context: cl.Context,
-                 width: int = 500, height: int = 500):
+                 queue: cl.CommandQueue,
+                 camera: Camera,
+                 fractal_class: type,
+                 fractal_parameters: Optional[Dict],
+                 fractal_color: Optional[Tuple[float, float, float]],
+                 width: int = 500, height: int = 500,
+                 iteration_limit=128,
+                 ray_steps_limit=128,
+                 epsilon=0.0001,
+                 ray_shift_multiplier=1.0):
 
-        self.width = width
-        self.height = height
+        self.device = device
+        self.context = context
+        self.queue = queue
+
+        self.iteration_limit = iteration_limit
+        self.ray_steps_limit = ray_steps_limit
+        self.epsilon = epsilon
+        self.ray_shift_multiplier = ray_shift_multiplier
+
+        self.width = max(1, width)
+        self.height = max(1, height)
 
         self.camera = camera
-        self.context = context
-        self.fractal = fractal
 
-        self.buffer = cl.Image(
-            context,
-            cl.ImageFormat(cl.channel_order.RGB)
+        self._quality_props_dtype, self._quality_props_decl = cl.tools.match_dtype_to_c_struct(
+            self.device,
+            "QualityProps",
+            self.quality_props
         )
 
-    def resize(self, width, height):
-        self.width = width
-        self.height = height
+        self._quality_props_dtype = cl.tools.get_or_register_dtype(
+            "QualityProps",
+            self._quality_props_dtype
+        )
 
-        self.buffer = cl.Image
+        self.fractal = fractal_class(
+            device, context, queue,
+            [camera.cl_type_declaration, self._quality_props_decl],
+            fractal_parameters, fractal_color
+        )
+
+        self._host_image_buffer = np.zeros((self.width, self.height, 4), dtype=np.uint8)
+        self._image_buffer = cl.Image(
+            self.context,
+            cl.mem_flags.READ_WRITE,
+            cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8),
+            shape=(self.width, self.height)
+        )
+
+        self._quality_props_buffer = cl.Buffer(
+            self.context,
+            cl.mem_flags.READ_ONLY,
+            self._quality_props_dtype.itemsize
+        )
+
+        self.sync_with_device()
+
+    def resize(self, width, height):
+        self.width = max(1, width)
+        self.height = max(1, height)
+
+        self._host_image_buffer = np.zeros((self.width, self.height, 4), dtype=np.uint8)
+        self._image_buffer = cl.Image(
+            self.context,
+            cl.mem_flags.READ_WRITE,
+            cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8),
+            shape=(self.width, self.height)
+        )
+
+    def sync_with_device(self):
+        quality_props_instance = np.array([(
+            self.iteration_limit,
+            self.ray_steps_limit,
+            self.epsilon,
+            self.ray_shift_multiplier
+        )], dtype=self._quality_props_dtype)[0]
+
+        cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)
 
     def render(self):
-        raise NotImplementedError
+        self.sync_with_device()
+        self.camera.sync_with_device()
+
+        self.fractal.render(self._quality_props_buffer, self._image_buffer, self.camera.buffer)
+        cl.enqueue_copy(
+            self.queue,
+            self._host_image_buffer,
+            self._image_buffer,
+            origin=(0, 0), region=(self.width, self.height)
+        )
 
     def save(self, path):
-        pass
+        from PIL import Image
+
+        image_array = np.zeros((self.width, self.height, 4), dtype=np.uint8)
+
+        cl.enqueue_copy(self.queue, image_array, self._image_buffer, origin=(0, 0), region=(self.width, self.height))
+
+        image = Image.fromarray(image_array)
+        image.save(path)
+
+    @property
+    def cl_type_declaration(self):
+        return self._quality_props_decl
+
+    @property
+    def host_buffer(self):
+        return self._host_image_buffer
