@@ -16,7 +16,8 @@ class Render:
         ("epsilon", cl.cltypes.float),
         ("ray_shift_multiplier", cl.cltypes.float),
         ("render_simple", cl.cltypes.int),
-        ("sun_direction", cl.cltypes.float3)
+        ("sun_direction", cl.cltypes.float3),
+        ("reflection_depth", cl.cltypes.int)
     ])
 
     def __init__(self,
@@ -30,6 +31,7 @@ class Render:
                  epsilon=0.01,
                  render_simple=True,
                  sun_direction=(-1, 1, -1),
+                 reflection_depth=1,
                  ray_shift_multiplier=1.0):
 
         self.device = device
@@ -41,6 +43,7 @@ class Render:
         self.ray_shift_multiplier = ray_shift_multiplier
         self.render_simple = render_simple
         self.sun_direction = sun_direction
+        self.reflection_depth = reflection_depth
 
         self.width = max(1, width)
         self.height = max(1, height)
@@ -83,12 +86,6 @@ class Render:
             self._quality_props_dtype.itemsize
         )
 
-        self._fractal_color_buffer = cl.Buffer(
-            self.context,
-            cl.mem_flags.READ_ONLY,
-            cl.cltypes.uchar3.itemsize
-        )
-
         self.sync_with_device()
 
     def resize(self, width, height):
@@ -109,13 +106,11 @@ class Render:
             self.epsilon,
             self.ray_shift_multiplier,
             self.render_simple,
-            self.sun_direction + (0, )
+            self.sun_direction + (0, ),
+            self.reflection_depth
         )], dtype=self._quality_props_dtype)[0]
 
         cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)
-
-        color = np.array([self.fractal.get_color() + (0,)], dtype=cl.cltypes.uchar3)
-        cl.enqueue_copy(self.queue, self._fractal_color_buffer, color)
 
         self.camera.sync_with_device()
         self.fractal.sync_with_device()
@@ -130,7 +125,7 @@ class Render:
             self.camera.buffer,
             self._quality_props_buffer,
             self.fractal.get_parameters_buffer(),
-            self._fractal_color_buffer,
+            self.fractal.get_material_buffer(),
             self._image_buffer
         )
 

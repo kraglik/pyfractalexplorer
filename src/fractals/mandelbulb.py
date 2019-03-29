@@ -13,6 +13,14 @@ class Mandelbulb(Fractal):
         "power": 8.0,
     }
 
+    _default_material = {
+        "color_diffusive": (229, 210, 180),
+        "color_specular": (255, 255, 255),
+        "diffusive": 0.75,
+        "specular": 0.25,
+        "reflected": 0.25
+    }
+
     mandelbox_parameters = np.dtype([
         ("power", cl.cltypes.float),
     ])
@@ -22,6 +30,9 @@ class Mandelbulb(Fractal):
         return (
             self._parameters["power"] + math.cos(self._time) * self._amplitude,
         )
+
+    def get_default_material(self):
+        return self._default_material
 
     def get_check_circumscribed_figure_code(self):
         return """

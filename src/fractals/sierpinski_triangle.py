@@ -14,12 +14,23 @@ class SierpinskiTriangle(Fractal):
         "offset": 1.5
     }
 
-    mandelbox_parameters = np.dtype([
+    _default_material = {
+        "color_diffusive": (229, 210, 180),
+        "color_specular": (255, 255, 255),
+        "diffusive": 0.75,
+        "specular": 0.25,
+        "reflected": 0.25
+    }
+
+    sierpinski_parameters = np.dtype([
         ("scale", cl.cltypes.float),
         ("offset", cl.cltypes.float)
     ])
 
     # ---------------------------------------------------------------------------------------------------------------- #
+    def get_default_material(self):
+        return self._default_material
+
     def get_parameters_values(self):
         return (
             self._parameters["scale"] + math.cos(self._time) * self._amplitude,
@@ -102,7 +113,7 @@ class SierpinskiTriangle(Fractal):
         return "SierpinskiTriangleParameters"
 
     def get_numpy_dtype_parameters(self):
-        return self.mandelbox_parameters
+        return self.sierpinski_parameters
 
     def get_initial_camera_position(self):
         return np.array([2, 0, 2], dtype=np.float32)

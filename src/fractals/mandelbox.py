@@ -13,7 +13,15 @@ class Mandelbox(Fractal):
     _default_parameters = {
         "r_min": 0.5,
         "escape_time": 100.0,
-        "scale": 2.39128
+        "scale": 2.39128  # -1.73
+    }
+
+    _default_material = {
+        "color_diffusive": (229, 210, 180),
+        "color_specular": (255, 255, 255),
+        "diffusive": 0.75,
+        "specular": 0.25,
+        "reflected": 0.25
     }
 
     mandelbox_parameters = np.dtype([
@@ -23,6 +31,9 @@ class Mandelbox(Fractal):
     ])
 
     # ---------------------------------------------------------------------------------------------------------------- #
+    def get_default_material(self):
+        return self._default_material
+
     def get_parameters_values(self):
         return (
             self._parameters["r_min"],
@@ -111,9 +122,6 @@ class Mandelbox(Fractal):
 
     def get_default_parameters(self):
         return copy(self._default_parameters)
-
-    def get_color(self):
-        return float(self._color["x"]), float(self._color["y"]), float(self._color["z"])
 
     def get_color_cl(self):
         return self._color

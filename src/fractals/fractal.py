@@ -10,6 +10,14 @@ import pyopencl.cltypes
 
 class Fractal:
 
+    _material_dtype = np.dtype([
+        ("color_diffusive", cl.cltypes.uchar3),
+        ("color_specular", cl.cltypes.uchar3),
+        ("diffusion", cl.cltypes.float),
+        ("specular", cl.cltypes.float),
+        ("reflected", cl.cltypes.float)
+    ])
+
     def __init__(self,
                  device: cl.Device,
                  context: cl.Context,
@@ -24,6 +32,11 @@ class Fractal:
 
         self._time = 0.0
         self._amplitude = 0.0
+
+        self._material_buffer = None
+        self._parameters_buffer = None
+
+        self._material = self.get_default_material()
 
         self._build_kernel(core_types_decl)
         self.set_parameters(parameters, color)
@@ -62,6 +75,22 @@ class Fractal:
 
     # PUBLIC METHODS
 
+    def get_diffusive_color(self):
+        return self._material["color_diffusive"]
+
+    def get_specular_color(self):
+        return self._material["color_specular"]
+
+    @abstractmethod
+    def get_default_material(self):
+        raise NotImplementedError
+
+    def set_material(self, material):
+        self._material = material
+
+    def get_material(self):
+        return self._material
+
     def set_parameters(self, parameters, color):
         if parameters is not None:
             assert set(parameters.keys()) == set(self.get_default_parameters().keys())
@@ -77,7 +106,7 @@ class Fractal:
     def sync_with_device(self):
         parameters_instance = np.array([self.get_parameters_values()], dtype=self._parameters_dtype)[0]
 
-        self._parameters_buffer = cl.Buffer(
+        self._parameters_buffer = self._parameters_buffer or cl.Buffer(
             self.context,
             cl.mem_flags.READ_ONLY,
             self._parameters_dtype.itemsize
@@ -85,12 +114,24 @@ class Fractal:
 
         cl.enqueue_copy(self.queue, self._parameters_buffer, parameters_instance)
 
-    @abstractmethod
-    def get_default_color(self) -> Tuple[int, int, int]:
-        raise NotImplementedError
+        material_instance = np.array([(
+            self.get_diffusive_color() + (0, ),
+            self.get_specular_color() + (0, ),
+            self._material["diffusive"],
+            self._material["specular"],
+            self._material["reflected"]
+        )], dtype=self._material_dtype)[0]
+
+        self._material_buffer = self._material_buffer or cl.Buffer(
+            self.context,
+            cl.mem_flags.READ_ONLY,
+            self._material_dtype.itemsize
+        )
+
+        cl.enqueue_copy(self.queue, self._material_buffer, material_instance)
 
     @abstractmethod
-    def get_color(self) -> Tuple[float, float, float]:
+    def get_default_color(self) -> Tuple[int, int, int]:
         raise NotImplementedError
 
     @abstractmethod
@@ -137,6 +178,9 @@ class Fractal:
 
     def get_parameters_buffer(self):
         return self._parameters_buffer
+
+    def get_material_buffer(self):
+        return self._material_buffer
 
     @abstractmethod
     def get_parameters_values(self) -> tuple:
