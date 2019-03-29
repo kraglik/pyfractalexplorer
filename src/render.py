@@ -14,7 +14,9 @@ class Render:
         ("iteration_limit", cl.cltypes.int),
         ("ray_steps_limit", cl.cltypes.int),
         ("epsilon", cl.cltypes.float),
-        ("ray_shift_multiplier", cl.cltypes.float)
+        ("ray_shift_multiplier", cl.cltypes.float),
+        ("render_simple", cl.cltypes.int),
+        ("sun_direction", cl.cltypes.float3)
     ])
 
     def __init__(self,
@@ -26,16 +28,19 @@ class Render:
                  iteration_limit=None,
                  ray_steps_limit=128,
                  epsilon=0.01,
+                 render_simple=True,
+                 sun_direction=(-1, 1, -1),
                  ray_shift_multiplier=1.0):
 
         self.device = device
         self.context = context
         self.queue = queue
-
         self.iteration_limit = iteration_limit
         self.ray_steps_limit = ray_steps_limit
         self.epsilon = epsilon
         self.ray_shift_multiplier = ray_shift_multiplier
+        self.render_simple = render_simple
+        self.sun_direction = sun_direction
 
         self.width = max(1, width)
         self.height = max(1, height)
@@ -102,7 +107,9 @@ class Render:
             self.iteration_limit if self.iteration_limit is not None else self.fractal.get_default_iterations(),
             self.ray_steps_limit,
             self.epsilon,
-            self.ray_shift_multiplier
+            self.ray_shift_multiplier,
+            self.render_simple,
+            self.sun_direction + (0, )
         )], dtype=self._quality_props_dtype)[0]
 
         cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)
@@ -139,8 +146,9 @@ class Render:
         from PIL import Image
 
         image = Image\
-            .fromarray(self._host_image_buffer.reshape((self.width, self.height, 4)))\
-            .transpose(Image.ROTATE_90)
+            .fromarray(self._host_image_buffer.reshape((self.width, self.height, 4))[:, :, :3])\
+            .transpose(Image.ROTATE_90)\
+            .transpose(Image.FLIP_TOP_BOTTOM)
         image.save(path)
 
     @property

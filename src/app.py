@@ -1,5 +1,3 @@
-import math
-
 import pyopencl as cl
 import pygame
 import time
@@ -8,7 +6,6 @@ from pygame.locals import *
 import numpy as np
 import os
 
-from .fractals import Fractal, fractals
 from .render import Render
 from .camera import Camera
 
@@ -81,7 +78,7 @@ class App:
 
         epsilon = self.render.epsilon
 
-        amplitude = 0.01
+        amplitude = 0.0
 
         key_map = {
             'w': False,
@@ -161,8 +158,15 @@ class App:
 
                     elif event.key == K_COMMA:
                         amplitude *= 1 / 1.1
+
                     elif event.key == K_PERIOD:
-                        amplitude *= 1.1
+                        if amplitude == 0:
+                            amplitude = 0.01
+                        else:
+                            amplitude *= 1.1
+
+                    elif event.key == K_l:
+                        self.render.render_simple = not self.render.render_simple
 
                     elif event.key == K_p:
                         if not os.path.exists(screenshots_path):
