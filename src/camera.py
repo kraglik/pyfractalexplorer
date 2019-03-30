@@ -32,7 +32,7 @@ class Camera:
                  up=np.array([0, 1, 0], dtype=cl.cltypes.float),
                  target=None,
                  zoom=1.0,
-                 shift_multiplier=0.0001,
+                 shift_multiplier=1.0,
                  mouse_speed=2.0):
 
         self.device = device

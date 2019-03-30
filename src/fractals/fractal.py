@@ -67,7 +67,8 @@ class Fractal:
                 type_declarations=''.join(core_types_decl + [parameters_decl]),
                 distance_function_declaration=self.get_distance_function_code(),
                 outside_of_circumscribed_figure_declaration=self.get_check_circumscribed_figure_code(),
-                fractal_parameters_typename=self.get_parameters_typename()
+                fractal_parameters_typename=self.get_parameters_typename(),
+                orbit_trap_declaration=self.get_orbit_trap_code()
             )
         )
 
@@ -151,6 +152,10 @@ class Fractal:
 
     @abstractmethod
     def get_distance_function_code(self) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_orbit_trap_code(self) -> str:
         raise NotImplementedError
 
     @abstractmethod

@@ -77,6 +77,44 @@ class MengerSponge(Fractal):
         }
         """
 
+    def get_orbit_trap_code(self) -> str:
+        return """
+        float3 orbit_trap(float3 pos, 
+                          __global QualityProps * quality_props,
+                          __global MengerSpongeParameters * parameters) {
+
+            float3 color = {1e20f, 1e20f, 1e20f};
+            float3 new_color;
+            float3 orbit = {0, 0, 0};
+            float3 m = {0.42f, 0.38f, 0.19f};
+
+            const float scale = parameters->scale;
+            const float scaleM = 3.0f - 1.0f;
+            const float3 offset = (float3)(1.0f, 1.0f, 1.0f);
+            const int iters = quality_props->iteration_limit;
+            const float psni = pow(scale, -(float)iters);
+            
+            for (int n = 0; n < iters; n++) {
+                pos = fabs(pos);
+                if (pos.x < pos.y)
+                    pos.xy = pos.yx;
+                if (pos.x < pos.z)
+                    pos.xz = pos.zx;
+                if (pos.y < pos.z)
+                    pos.yz = pos.zy;
+            
+                pos = pos * scale - offset * (scaleM);
+                if (pos.z < -0.5f * offset.z * (scaleM))
+                    pos.z += offset.z * (scaleM);
+                    
+                orbit = max(orbit, pos * m);
+            }
+
+            return orbit;
+
+        }
+        """
+
     def get_name(self):
         return "Menger Sponge"
 

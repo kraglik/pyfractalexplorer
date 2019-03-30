@@ -18,7 +18,7 @@ class Mandelbulb(Fractal):
         "color_specular": (255, 255, 255),
         "diffusive": 0.75,
         "specular": 0.25,
-        "reflected": 0.25
+        "reflected": 0.05
     }
 
     mandelbox_parameters = np.dtype([
@@ -93,6 +93,54 @@ class Mandelbulb(Fractal):
             float2 p = iterate_z(1.0f, point, point, parameters->power, quality_props->iteration_limit);
         
             return (0.5f * log(p.x) * p.x) / p.y;
+        }
+        """
+
+    def get_orbit_trap_code(self) -> str:
+        return """
+        float3 orbit_trap(float3 point, 
+                          __global QualityProps * quality_props,
+                          __global MandelbulbParameters * parameters) {
+                          
+            float3 z = point, c = point;
+            float dr = 1.0f;
+            float power = parameters->power;
+            int limit = quality_props->iteration_limit;
+
+            float3 color = {1e20f, 1e20f, 1e20f};
+            float3 new_color;
+            float3 orbit = {0, 0, 0};
+            float3 m = {10.0f, 20.0f, 1.0f};
+            m = normalize(m);
+
+            float2 pair = { 0.0f, dr };
+        
+            for (int i = 0;; i++) {
+        
+                float r = fast_length(z);
+                float3 zn;
+                pow_vec(&z, &zn, power);
+                
+                zn += c;                
+        
+                if (i > limit || r > 2.0f) {
+        
+                    pair.x = r;
+                    pair.y = dr;
+        
+                    break;
+        
+                } else {
+                
+                    dr = pow(r, power - 1.0f) * power * dr + 1.0f;
+                    z = zn;
+                    
+                    orbit = max(orbit, z * m);        
+                }
+            }
+
+            return orbit;
+
         }
         """
 

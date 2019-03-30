@@ -13,8 +13,10 @@ typedef struct Material {
 typedef struct Hit {
     float distance;
     float3 position;
+    float3 normal;
     int depth;
-    uchar4 color;
+    bool outside;
+    float min_distance_to_fractal;
 } Hit;
 
 $type_declarations
@@ -24,6 +26,8 @@ $type_declarations
 $distance_function_declaration
 
 $outside_of_circumscribed_figure_declaration
+
+$orbit_trap_declaration
 
 
 float3 normal_to_fractal(float3 point,
@@ -48,27 +52,42 @@ float3 normal_to_fractal(float3 point,
 
 
 float3 reflect(float3 direction, float3 normal) {
-    return direction - 2 * dot(direction, normal) * normal;
+    return normalize(direction - 2 * dot(direction, normal) * normal);
 }
 
 
-bool in_shadow(float3 point,
+uchar4 amplify_color(uchar4 color, float mul) {
+    uchar4 new_color;
+
+    new_color.x = (unsigned char)(mul * (float)color.x);
+    new_color.y = (unsigned char)(mul * (float)color.y);
+    new_color.z = (unsigned char)(mul * (float)color.z);
+    new_color.w = color.w;
+
+    return new_color;
+}
+
+
+Hit march_ray(float3 position,
+               float3 direction,
                __global QualityProps * quality_props,
                __global $fractal_parameters_typename * parameters) {
 
     float epsilon = quality_props->epsilon;
 
-    Hit first_hit;
-    Ray ray = { .pos = point, .dir = quality_props->sun_direction };
-    Hit hit = { .distance = epsilon * 2, .depth = quality_props->ray_steps_limit };
+    Hit hit = {
+        .distance = 0.0f,
+        .depth = quality_props->ray_steps_limit,
+        .min_distance_to_fractal = 1e20f
+    };
 
     for (int i = 0; i < quality_props->ray_steps_limit; i++) {
-        float d = fractal_distance(ray.pos, quality_props, parameters);
-        bool is_going_away = hit.distance < epsilon * 2;
+        float d = fractal_distance(position, quality_props, parameters);
 
         hit.distance += d * quality_props->ray_shift_multiplier;
-        hit.position = ray.pos + d * ray.dir * quality_props->ray_shift_multiplier;
-        ray.pos = hit.position;
+        hit.min_distance_to_fractal = min(hit.min_distance_to_fractal, d);
+        hit.position = position + d * direction * quality_props->ray_shift_multiplier;
+        position = hit.position;
 
         hit.depth = i;
 
@@ -79,28 +98,39 @@ bool in_shadow(float3 point,
             break;
         }
 
-        if (d < epsilon && !isnan(d))
-            if (!is_going_away)
-                break;
+        if (d < epsilon && !isnan(d)) {
+            hit.normal = normal_to_fractal(hit.position, quality_props, parameters);
+            hit.position = position + (epsilon - d) * hit.normal;
+            position = hit.position;
+            break;
+        }
     }
 
-    bool outside = outside_of_circumscribed_figure(hit.position) ||
-                   fast_length(hit.position) > 15.0f ||
-                   hit.distance > 100.0f;
+    hit.outside = outside_of_circumscribed_figure(hit.position) ||
+                  fast_length(hit.position) > 15.0f ||
+                  hit.distance > 100.0f;
 
-    return !outside;
+    return hit;
 }
 
 
 uchar4 blinn_phong(float3 position,
-                  float3 normal,
-                  float3 direction,
-                  float shadow_coefficient,
-                  __global QualityProps * quality_props,
-                  __global $fractal_parameters_typename * parameters,
-                  __global Material * material) {
+                   float3 normal,
+                   float3 direction,
+                   float shadow_coefficient,
+                   __global QualityProps * quality_props,
+                   __global $fractal_parameters_typename * parameters,
+                   __global Material * material) {
 
     uchar3 color_diffusive = material->color_diffusive;
+
+    if (quality_props->use_orbit_trap) {
+        float3 ot = normalize(orbit_trap(position, quality_props, parameters));
+        color_diffusive.x = (unsigned char)(ot.x * 255.0f);
+        color_diffusive.y = (unsigned char)(ot.y * 255.0f);
+        color_diffusive.z = (unsigned char)(ot.z * 255.0f);
+    }
+
     uchar3 color_specular = material->color_specular;
 
     uchar4 color;
@@ -108,21 +138,21 @@ uchar4 blinn_phong(float3 position,
     float diffusive = 0.0f;
     float specular = 0.0f;
 
+    position += normal * quality_props->epsilon * 2;
+
     float projection_length = dot(normal, quality_props->sun_direction);
 
     if (projection_length > 0.0f) {
         diffusive = max(0.0f, projection_length);
         specular = max(0.0f, pow(dot(reflect(-quality_props->sun_direction, normal), direction), 2.0f));
 
-        Ray shadow_ray = {
-            .pos = position,
-            .dir = quality_props->sun_direction
-        };
-
-        if (in_shadow(position, quality_props, parameters)) {
+        if (!march_ray(position, quality_props->sun_direction, quality_props, parameters).outside) {
             diffusive *= shadow_coefficient;
             specular *= shadow_coefficient;
         }
+    } else {
+        diffusive = 0.2f;
+        specular = 0.0f;
     }
 
     color.x = (unsigned char) clamp(
@@ -149,123 +179,107 @@ uchar4 blinn_phong(float3 position,
 }
 
 
-Hit march_ray(Ray ray,
-              __global QualityProps * quality_props,
-              __global $fractal_parameters_typename * parameters,
-              __global Material * material,
-              int reflection_depth) {
+uchar4 render_pixel(Ray ray,
+           __global QualityProps * quality_props,
+           __global $fractal_parameters_typename * parameters,
+           __global Material * material) {
 
-    uchar3 color_diffusive = material->color_diffusive;
-    uchar3 color_specular = material->color_specular;
+    uchar4 color = {0, 0, 0, 0};
 
     float epsilon = quality_props->epsilon;
 
-    bool reflected = false, camera_in_shadow = in_shadow(ray.pos, quality_props, parameters);
+    bool reflected = false;
+    bool camera_in_shadow = !march_ray(ray.pos, quality_props->sun_direction, quality_props, parameters).outside;
 
-    Hit first_hit;
+    uchar4 fog_color = {255, 255, 255, 255};
 
-    for (int it = 0; it < reflection_depth; it++) {
-        Hit hit = { .distance = reflected ? epsilon * 2 : 0.0f, .depth = quality_props->ray_steps_limit };
+    for (int i = 0; i < quality_props->reflection_depth + 1; i++) {
+        Hit hit = march_ray(ray.pos, ray.dir, quality_props, parameters);
 
-        for (int i = 0; i < quality_props->ray_steps_limit; i++) {
+        uchar4 current_color;
 
-            float d = fractal_distance(ray.pos, quality_props, parameters);
-            bool is_going_away = (reflected && hit.distance < epsilon * 2);
-            hit.distance += d * quality_props->ray_shift_multiplier;
-            hit.position = ray.pos + d * ray.dir * quality_props->ray_shift_multiplier;
-            ray.pos = hit.position;
+        if (hit.outside) {
 
-            hit.depth = i;
+            current_color.x = 135;
+            current_color.y = 206;
+            current_color.z = 235;
+            current_color.w = 0;
 
-            if (d > 100.0f) {
-                hit.depth = quality_props->ray_steps_limit;
-                hit.distance = 1e20f;
+        } else {
 
-                break;
-            }
-
-            if (d < epsilon && !is_going_away)
-                break;
-        }
-
-        bool outside = outside_of_circumscribed_figure(hit.position) ||
-                       fast_length(hit.position) > 15.0f ||
-                       hit.distance > 100.0f;
-
-        if (!outside) {
             if (quality_props->render_simple) {
+
+                uchar3 color_diffusive = material->color_diffusive;
+
+                if (quality_props->use_orbit_trap) {
+                    float3 ot = normalize(orbit_trap(hit.position, quality_props, parameters));
+                    color_diffusive.x = (unsigned char)(ot.x * 255.0f);
+                    color_diffusive.y = (unsigned char)(ot.y * 255.0f);
+                    color_diffusive.z = (unsigned char)(ot.z * 255.0f);
+                }
 
                 float color_strength = 1.0f - (float)hit.depth / (float)quality_props->ray_steps_limit;
 
-                hit.color.x = (unsigned char)clamp(
+                current_color.x = (unsigned char)clamp(
                     (color_strength * (float)color_diffusive.x),
                     0.0f,
                     (float)color_diffusive.x);
-                hit.color.y = (unsigned char)clamp(
+                current_color.y = (unsigned char)clamp(
                     (color_strength * (float)color_diffusive.y),
                     0.0f,
                     (float)color_diffusive.y);
-                hit.color.z = (unsigned char)clamp(
+                current_color.z = (unsigned char)clamp(
                     (color_strength * (float)color_diffusive.z),
                     0.0f,
                     (float)color_diffusive.z);
-                hit.color.w = 255;
+                current_color.w = 255;
 
             } else {
 
-                float3 normal = normal_to_fractal(hit.position, quality_props, parameters);
-
-                hit.color = blinn_phong(
-                    hit.position + normal * epsilon * 2,
-                    normal,
+                current_color = blinn_phong(
+                    hit.position,
+                    hit.normal,
                     ray.dir,
-                    camera_in_shadow ? 0.6f : 0.2f,
+                    camera_in_shadow ? 0.5f : 0.4f,
                     quality_props,
                     parameters,
                     material
                 );
 
-                if (reflection_depth > 1) {
+                float fog_mul = 1.0f - (hit.distance / 20.0f);
 
-                    hit.color.x = (unsigned char)((float)hit.color.x * (1.0f - material->reflected));
-                    hit.color.y = (unsigned char)((float)hit.color.y * (1.0f - material->reflected));
-                    hit.color.z = (unsigned char)((float)hit.color.z * (1.0f - material->reflected));
+                current_color = amplify_color(current_color, fog_mul) + amplify_color(fog_color, 1.0f - fog_mul);
 
-                    ray.dir = reflect(ray.dir, normal);
-                    ray.pos = hit.position + ray.dir * epsilon * 2;
-
-                    reflected = true;
-                }
+                ray.dir = reflect(ray.dir, hit.normal);
+                ray.pos = hit.position + hit.normal * epsilon * 2;
             }
+        }
+
+        float reflected_power = 1.0f;
+
+        if (i == 0) {
+
+            reflected_power = (quality_props->render_simple || hit.outside) ? 1.0f : 1.0f - material->reflected;
 
         } else {
 
-            hit.color.x = 135;
-            hit.color.y = 206;
-            hit.color.z = 235;
-            hit.color.w = 0;
+            reflected_power = pow(material->reflected, i);
 
         }
 
-        float reflected_power = pow(material->reflected, it);
+        color.x += (unsigned char)(reflected_power * (float)current_color.x);
+        color.y += (unsigned char)(reflected_power * (float)current_color.y);
+        color.z += (unsigned char)(reflected_power * (float)current_color.z);
 
-        if (it > 0) {
-            first_hit.color.x += (unsigned char)(reflected_power * (float)hit.color.x);
-            first_hit.color.y += (unsigned char)(reflected_power * (float)hit.color.y);
-            first_hit.color.z += (unsigned char)(reflected_power * (float)hit.color.z);
+        if (i == 0) {
+            color.w = current_color.w;
         }
 
-        if (it == 0)
-            first_hit = hit;
-
-        if (reflected_power * 255.0f < 1.0f || outside || quality_props->render_simple)
+        if (hit.outside || quality_props->render_simple || (reflected_power * 255.0f) < 1.0f)
             break;
-
-        if (it == 0)
-            first_hit = hit;
     }
 
-    return first_hit;
+    return color;
 }
 
 
@@ -295,12 +309,12 @@ __kernel void render(__global Camera * camera,
     ray.dir = camera->pos + camera->right * x + camera->up * y + camera->dir * camera->zoom;
     ray.dir = normalize(ray.dir - camera->pos);
 
-    Hit hit = march_ray(ray, quality_props, parameters, material, quality_props->reflection_depth + 1);
+    uchar4 color = render_pixel(ray, quality_props, parameters, material);
 
     __global uchar * pixel = & output[idX * height * 4 + idY * 4];
 
-    pixel[0] = hit.color.x;
-    pixel[1] = hit.color.y;
-    pixel[2] = hit.color.z;
-    pixel[3] = hit.color.w;
+    pixel[0] = color.x;
+    pixel[1] = color.y;
+    pixel[2] = color.z;
+    pixel[3] = color.w;
 }

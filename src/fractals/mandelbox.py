@@ -114,6 +114,58 @@ class Mandelbox(Fractal):
         }
         """
 
+    def get_orbit_trap_code(self) -> str:
+        return """
+        float3 orbit_trap(float3 point, 
+                          __global QualityProps * quality_props,
+                          __global MandelboxParameters * parameters) {
+        
+            float3 color = {1e20f, 1e20f, 1e20f};
+            float3 new_color;
+            float3 orbit = {0, 0, 0};
+            float3 m = {1.0f, 1.0f, 1.0f}; // {0.42f, 0.38f, 0.19f};
+            
+            float3 p = point;
+        
+            float r_min_2 = square(parameters->r_min);
+            float r_fixed_2 = 1.0f;
+            float escape = square(parameters->escape_time);
+            float d_factor = 1;
+            float r2 = -1;
+            float scale = parameters->scale;
+        
+            float c1 = fabs(scale - 1.0f);
+            float c2 = pow(fabs(scale), 1 - quality_props->iteration_limit);
+        
+            for (int i = 0; i < quality_props->iteration_limit; i++) {
+                fold_box(&p);
+                r2 = dot(p, p);
+        
+                fold_sphere(&p, r2, r_min_2, r_fixed_2);
+        
+                p *= scale;
+                p += point;
+        
+                if (r2 < r_min_2)
+                    d_factor *= (r_fixed_2 / r_min_2);
+                else if (r2<r_fixed_2)
+                    d_factor *= (r_fixed_2 / r2);
+        
+                d_factor = d_factor * fabs(scale) + 1.0;
+                
+                orbit = max(orbit, p * m);
+        
+                if ( r2 > escape )
+                    break;
+            }
+        
+            r2 = sqrt(dot(p, p));
+        
+            return orbit;
+        
+        }
+        """
+
     def get_name(self):
         return "Mandelbox"
 

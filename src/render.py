@@ -17,7 +17,8 @@ class Render:
         ("ray_shift_multiplier", cl.cltypes.float),
         ("render_simple", cl.cltypes.int),
         ("sun_direction", cl.cltypes.float3),
-        ("reflection_depth", cl.cltypes.int)
+        ("reflection_depth", cl.cltypes.int),
+        ("use_orbit_trap", cl.cltypes.int)
     ])
 
     def __init__(self,
@@ -32,6 +33,7 @@ class Render:
                  render_simple=True,
                  sun_direction=(-1, 1, -1),
                  reflection_depth=1,
+                 use_orbit_trap=True,
                  ray_shift_multiplier=1.0):
 
         self.device = device
@@ -44,6 +46,7 @@ class Render:
         self.render_simple = render_simple
         self.sun_direction = sun_direction
         self.reflection_depth = reflection_depth
+        self.use_orbit_trap = use_orbit_trap
 
         self.width = max(1, width)
         self.height = max(1, height)
@@ -107,7 +110,8 @@ class Render:
             self.ray_shift_multiplier,
             self.render_simple,
             self.sun_direction + (0, ),
-            self.reflection_depth
+            self.reflection_depth,
+            self.use_orbit_trap
         )], dtype=self._quality_props_dtype)[0]
 
         cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)

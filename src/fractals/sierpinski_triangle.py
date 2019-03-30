@@ -87,6 +87,55 @@ class SierpinskiTriangle(Fractal):
         }
         """
 
+    def get_orbit_trap_code(self) -> str:
+        return """
+        float3 orbit_trap(float3 z, 
+                          __global QualityProps * quality_props,
+                          __global SierpinskiTriangleParameters * parameters) {
+
+            float3 color = {1e20f, 1e20f, 1e20f};
+            float3 new_color;
+            float3 orbit = {0, 0, 0};
+            float3 m = {0.42f, 0.38f, 0.19f};
+
+            float scale = parameters->scale;
+            float offset = parameters->offset;
+            
+            float temp_x, temp_y, temp_z;
+            
+            for (int n = 0; n < quality_props->iteration_limit; n++) {
+            
+                if ((z.x + + z.y) < 0.0) {
+                    temp_x = -z.y;
+                    temp_y = -z.x;
+                    z.x = temp_x;
+                    z.y = temp_y;
+                }
+                
+                if ((z.x + z.z) < 0.0) {
+                    temp_x = -z.z;
+                    temp_z = -z.x;
+                    z.x = temp_x;
+                    z.z = temp_z;
+                }
+                
+                if ((z.z + z.y) < 0.0) {
+                    temp_z = -z.y;
+                    temp_y = -z.z;
+                    z.z = temp_z;
+                    z.y = temp_y;
+                }
+               
+                z = scale * z - offset * (scale - 1.0f);
+                
+                orbit = max(orbit, z * m);
+            }
+
+            return orbit;
+
+        }
+        """
+
     def get_name(self):
         return "Sierpinski Triangle"
 
