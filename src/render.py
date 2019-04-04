@@ -19,7 +19,8 @@ class Render:
         ("sun_direction", cl.cltypes.float3),
         ("reflection_depth", cl.cltypes.int),
         ("use_orbit_trap", cl.cltypes.int),
-        ("glow_color", cl.cltypes.int3)
+        ("glow_color", cl.cltypes.int3),
+        ("glow_sharpness", cl.cltypes.float)
     ])
 
     def __init__(self,
@@ -35,7 +36,6 @@ class Render:
                  sun_direction=(-1, 1, -1),
                  reflection_depth=1,
                  use_orbit_trap=True,
-                 glow_color=(-80, 255, -80),
                  ray_shift_multiplier=1.0):
 
         self.device = device
@@ -49,7 +49,6 @@ class Render:
         self.sun_direction = sun_direction
         self.reflection_depth = reflection_depth
         self.use_orbit_trap = use_orbit_trap
-        self.glow_color = glow_color
 
         self.width = max(1, width)
         self.height = max(1, height)
@@ -122,7 +121,8 @@ class Render:
             self.sun_direction + (0, ),
             self.reflection_depth,
             self.use_orbit_trap,
-            self.glow_color + (0, )
+            self.fractal.get_glow_color() + (0, ),
+            self.fractal.get_glow_sharpness()
         )], dtype=self._quality_props_dtype)[0]
 
         cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)

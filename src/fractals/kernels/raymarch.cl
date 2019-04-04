@@ -75,6 +75,7 @@ Hit march_ray(float3 position,
                __global $fractal_parameters_typename * parameters) {
 
     float epsilon = quality_props->epsilon;
+    float glow_sharpness = quality_props->glow_sharpness;
 
     Hit hit = {
         .distance = 0.0f,
@@ -91,7 +92,7 @@ Hit march_ray(float3 position,
         if (hit.min_distance_to_fractal > d)
             hit.position_of_min_distance = hit.position;
 
-        hit.min_distance_to_fractal = min(hit.min_distance_to_fractal, 20.0f * d / hit.distance);
+        hit.min_distance_to_fractal = min(hit.min_distance_to_fractal, glow_sharpness * d / hit.distance);
         hit.position = position + d * direction * quality_props->ray_shift_multiplier;
         position = hit.position;
 
@@ -213,6 +214,13 @@ uchar4 render_pixel(Ray ray,
             current_color.w = 0;
 
             int3 glow_color = quality_props->glow_color;
+
+            if ((glow_color.x + glow_color.y + glow_color.z) == 0) {
+                float3 ot = normalize(orbit_trap(hit.position, quality_props, parameters));
+                glow_color.x = (int) ot.x * 255;
+                glow_color.y = (int) ot.y * 255;
+                glow_color.z = (int) ot.z * 255;
+            }
 
             float glow_mul = (1.0f - hit.min_distance_to_fractal) * (1.0f - hit.min_distance_to_fractal);
 

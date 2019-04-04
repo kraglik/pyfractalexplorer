@@ -172,3 +172,9 @@ class SierpinskiTriangle(Fractal):
 
     def get_default_iterations(self):
         return 16
+
+    def get_glow_color(self):
+        return 200, 200, -20
+
+    def get_glow_sharpness(self):
+        return 25.0

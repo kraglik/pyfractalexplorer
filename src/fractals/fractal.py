@@ -216,3 +216,9 @@ class Fractal:
 
     def set_amplitude(self, amplitude: float):
         self._amplitude = amplitude
+
+    def get_glow_color(self) -> Tuple[int, int, int]:
+        return 255, 255, 255
+
+    def get_glow_sharpness(self) -> float:
+        return 20.0

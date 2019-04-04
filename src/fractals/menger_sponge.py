@@ -151,3 +151,9 @@ class MengerSponge(Fractal):
 
     def get_default_iterations(self):
         return 10
+
+    def get_glow_color(self):
+        return 255, -20, -20
+
+    def get_glow_sharpness(self):
+        return 10.0

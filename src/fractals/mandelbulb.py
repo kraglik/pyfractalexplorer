@@ -109,35 +109,36 @@ class Mandelbulb(Fractal):
 
             float3 color = {1e20f, 1e20f, 1e20f};
             float3 new_color;
-            float3 orbit = {0, 0, 0};
-            float3 m = {10.0f, 20.0f, 1.0f};
+            float3 orbit = {0, 1, 0};
+            float3 m = {0.0f, 20.0f, 0.0f};
             m = normalize(m);
 
             float2 pair = { 0.0f, dr };
         
-            for (int i = 0;; i++) {
-        
-                float r = fast_length(z);
-                float3 zn;
-                pow_vec(&z, &zn, power);
-                
-                zn += c;                
-        
-                if (i > limit || r > 2.0f) {
-        
-                    pair.x = r;
-                    pair.y = dr;
-        
-                    break;
-        
-                } else {
-                
-                    dr = pow(r, power - 1.0f) * power * dr + 1.0f;
-                    z = zn;
-                    
-                    orbit = max(orbit, z * m);        
-                }
-            }
+            //for (int i = 0;; i++) {
+            //
+            //    float r = fast_length(z);
+            //    float3 zn;
+            //    pow_vec(&z, &zn, power);
+            //    
+            //    zn += c;        
+            //    
+            //    orbit = max(orbit, zn * m);          
+            //
+            //    if (i > limit || r > 2.0f) {
+            //
+            //        pair.x = r;
+            //        pair.y = dr;
+            //
+            //        break;
+            //
+            //    } else {
+            //    
+            //        dr = pow(r, power - 1.0f) * power * dr + 1.0f;
+            //        z = zn;
+            //              
+            //    }
+            //}
 
             return orbit;
 
@@ -180,3 +181,9 @@ class Mandelbulb(Fractal):
 
     def get_default_iterations(self):
         return 32
+
+    def get_glow_color(self):
+        return -80, 100, 200
+
+    def get_glow_sharpness(self):
+        return 15.0

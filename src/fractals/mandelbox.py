@@ -199,3 +199,9 @@ class Mandelbox(Fractal):
 
     def get_default_iterations(self):
         return 16
+
+    def get_glow_color(self):
+        return -80, 200, 255
+
+    def get_glow_sharpness(self):
+        return 18.0
