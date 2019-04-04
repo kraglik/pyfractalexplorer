@@ -17,6 +17,7 @@ typedef struct Hit {
     int depth;
     bool outside;
     float min_distance_to_fractal;
+    float3 position_of_min_distance;
 } Hit;
 
 $type_declarations
@@ -78,14 +79,19 @@ Hit march_ray(float3 position,
     Hit hit = {
         .distance = 0.0f,
         .depth = quality_props->ray_steps_limit,
-        .min_distance_to_fractal = 1e20f
+        .min_distance_to_fractal = 1.0f,
+        .position_of_min_distance = position
     };
 
     for (int i = 0; i < quality_props->ray_steps_limit; i++) {
         float d = fractal_distance(position, quality_props, parameters);
 
         hit.distance += d * quality_props->ray_shift_multiplier;
-        hit.min_distance_to_fractal = min(hit.min_distance_to_fractal, d);
+
+        if (hit.min_distance_to_fractal > d)
+            hit.position_of_min_distance = hit.position;
+
+        hit.min_distance_to_fractal = min(hit.min_distance_to_fractal, 20.0f * d / hit.distance);
         hit.position = position + d * direction * quality_props->ray_shift_multiplier;
         position = hit.position;
 
@@ -123,15 +129,16 @@ uchar4 blinn_phong(float3 position,
                    __global Material * material) {
 
     uchar3 color_diffusive = material->color_diffusive;
+    uchar3 color_specular = material->color_specular;
 
     if (quality_props->use_orbit_trap) {
         float3 ot = normalize(orbit_trap(position, quality_props, parameters));
         color_diffusive.x = (unsigned char)(ot.x * 255.0f);
         color_diffusive.y = (unsigned char)(ot.y * 255.0f);
         color_diffusive.z = (unsigned char)(ot.z * 255.0f);
-    }
 
-    uchar3 color_specular = material->color_specular;
+        color_specular = color_diffusive;
+    }
 
     uchar4 color;
 
@@ -144,7 +151,7 @@ uchar4 blinn_phong(float3 position,
 
     if (projection_length > 0.0f) {
         diffusive = max(0.0f, projection_length);
-        specular = max(0.0f, pow(dot(reflect(-quality_props->sun_direction, normal), direction), 2.0f));
+        specular = max(0.0f, pow(dot(reflect(-quality_props->sun_direction, normal), direction), 3.0f));
 
         if (!march_ray(position, quality_props->sun_direction, quality_props, parameters).outside) {
             diffusive *= shadow_coefficient;
@@ -205,6 +212,14 @@ uchar4 render_pixel(Ray ray,
             current_color.z = 235;
             current_color.w = 0;
 
+            int3 glow_color = quality_props->glow_color;
+
+            float glow_mul = (1.0f - hit.min_distance_to_fractal) * (1.0f - hit.min_distance_to_fractal);
+
+            current_color.x = (uchar) clamp((int) current_color.x + (int) (glow_color.x * glow_mul), 0, 255);
+            current_color.y = (uchar) clamp((int) current_color.y + (int) (glow_color.y * glow_mul), 0, 255);
+            current_color.z = (uchar) clamp((int) current_color.z + (int) (glow_color.z * glow_mul), 0, 255);
+
         } else {
 
             if (quality_props->render_simple) {
@@ -246,7 +261,7 @@ uchar4 render_pixel(Ray ray,
                     material
                 );
 
-                float fog_mul = 1.0f - (hit.distance / 20.0f);
+                float fog_mul = 1.0f - (hit.distance / 40.0f);
 
                 current_color = amplify_color(current_color, fog_mul) + amplify_color(fog_color, 1.0f - fog_mul);
 

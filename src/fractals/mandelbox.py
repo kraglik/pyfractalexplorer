@@ -135,7 +135,7 @@ class Mandelbox(Fractal):
             float scale = parameters->scale;
         
             float c1 = fabs(scale - 1.0f);
-            float c2 = pow(fabs(scale), 1 - quality_props->iteration_limit);
+            float c2 = pow(fabs(scale), 1 - 10);
         
             for (int i = 0; i < quality_props->iteration_limit; i++) {
                 fold_box(&p);

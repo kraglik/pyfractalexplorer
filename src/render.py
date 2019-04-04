@@ -18,7 +18,8 @@ class Render:
         ("render_simple", cl.cltypes.int),
         ("sun_direction", cl.cltypes.float3),
         ("reflection_depth", cl.cltypes.int),
-        ("use_orbit_trap", cl.cltypes.int)
+        ("use_orbit_trap", cl.cltypes.int),
+        ("glow_color", cl.cltypes.int3)
     ])
 
     def __init__(self,
@@ -28,12 +29,13 @@ class Render:
                  camera: Camera,
                  width: int = 500, height: int = 500,
                  iteration_limit=None,
-                 ray_steps_limit=128,
-                 epsilon=0.01,
+                 ray_steps_limit=200,
+                 epsilon=0.001,
                  render_simple=True,
                  sun_direction=(-1, 1, -1),
                  reflection_depth=1,
                  use_orbit_trap=True,
+                 glow_color=(-80, 255, -80),
                  ray_shift_multiplier=1.0):
 
         self.device = device
@@ -47,6 +49,7 @@ class Render:
         self.sun_direction = sun_direction
         self.reflection_depth = reflection_depth
         self.use_orbit_trap = use_orbit_trap
+        self.glow_color = glow_color
 
         self.width = max(1, width)
         self.height = max(1, height)
@@ -77,10 +80,17 @@ class Render:
         self.fractal = self.fractals[0]
 
         self._host_image_buffer = np.zeros(self.width * self.height * 4, dtype=np.uint8)
+        self._host_large_image_buffer = np.zeros(self.width * 5 * self.height * 5 * 4, dtype=np.uint8)
+
         self._image_buffer = cl.Buffer(
             self.context,
-            cl.mem_flags.READ_ONLY,
+            cl.mem_flags.READ_WRITE,
             self._host_image_buffer.nbytes
+        )
+        self._large_image_buffer = cl.Buffer(
+            self.context,
+            cl.mem_flags.READ_WRITE,
+            self._host_large_image_buffer.nbytes
         )
 
         self._quality_props_buffer = cl.Buffer(
@@ -111,7 +121,8 @@ class Render:
             self.render_simple,
             self.sun_direction + (0, ),
             self.reflection_depth,
-            self.use_orbit_trap
+            self.use_orbit_trap,
+            self.glow_color + (0, )
         )], dtype=self._quality_props_dtype)[0]
 
         cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)
@@ -142,10 +153,35 @@ class Render:
         )
 
     def save(self, path):
+        self.sync_with_device()
+
+        render_event = self.fractal.render_function(
+            self.queue,
+            (self.width * 5, self.height * 5),
+            None,
+            self.camera.buffer,
+            self._quality_props_buffer,
+            self.fractal.get_parameters_buffer(),
+            self.fractal.get_material_buffer(),
+            self._large_image_buffer
+        )
+
+        render_event.wait()
+
+        cl.enqueue_copy(
+            self.queue,
+            self._host_large_image_buffer,
+            self._large_image_buffer
+        )
+
         from PIL import Image
 
         image = Image\
-            .fromarray(self._host_image_buffer.reshape((self.width, self.height, 4))[:, :, :3])\
+            .fromarray(
+                self._host_large_image_buffer.reshape(
+                    (self.width * 5, self.height * 5, 4)
+                )[:, :, :3]
+            )\
             .transpose(Image.ROTATE_90)\
             .transpose(Image.FLIP_TOP_BOTTOM)
         image.save(path)

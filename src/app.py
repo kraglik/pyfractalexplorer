@@ -107,7 +107,7 @@ class App:
         start_datetime = datetime.now()
         start_time = time.time()
 
-        screenshots_path = "screenshots/%s/" % (str(start_datetime), )
+        screenshots_path = "screenshots/"
         n_screenshots = 0
 
         while True:
