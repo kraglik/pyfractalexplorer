@@ -121,7 +121,7 @@ Hit march_ray(float3 position,
 }
 
 
-uchar4 blinn_phong(float3 position,
+float3 blinn_phong(float3 position,
                    float3 normal,
                    float3 direction,
                    float shadow_coefficient,
@@ -129,19 +129,15 @@ uchar4 blinn_phong(float3 position,
                    __global $fractal_parameters_typename * parameters,
                    __global Material * material) {
 
-    uchar3 color_diffusive = material->color_diffusive;
-    uchar3 color_specular = material->color_specular;
+    float3 color_diffusive = material->color_diffusive;
+    float3 color_specular = material->color_specular;
 
     if (quality_props->use_orbit_trap) {
-        float3 ot = normalize(orbit_trap(position, quality_props, parameters));
-        color_diffusive.x = (unsigned char)(ot.x * 255.0f);
-        color_diffusive.y = (unsigned char)(ot.y * 255.0f);
-        color_diffusive.z = (unsigned char)(ot.z * 255.0f);
-
+        color_diffusive = normalize(orbit_trap(position, quality_props, parameters));
         color_specular = color_diffusive;
     }
 
-    uchar4 color;
+    float3 color;
 
     float diffusive = 0.0f;
     float specular = 0.0f;
@@ -163,99 +159,59 @@ uchar4 blinn_phong(float3 position,
         specular = 0.0f;
     }
 
-    color.x = (unsigned char) clamp(
-        clamp(diffusive * (float)color_diffusive.x, 0.0f, (float)color_diffusive.x) * material->diffusive +
-            clamp(specular * (float)color_specular.x, 0.0f, (float)color_specular.x) * material->specular,
-        0.0f,
-        255.0f
-    );
-    color.y = (unsigned char) clamp(
-        clamp(diffusive * (float)color_diffusive.y, 0.0f, (float)color_diffusive.y) * material->diffusive +
-            clamp((float)specular * color_specular.y, 0.0f, (float)color_specular.y) * material->specular,
-        0.0f,
-        255.0f
-    );
-    color.z = (unsigned char) clamp(
-        clamp(diffusive * (float)color_diffusive.z, 0.0f, (float)color_diffusive.z) * material->diffusive +
-            clamp(specular * (float)color_specular.z, 0.0f, (float)color_specular.z) * material->specular,
-        0.0f,
-        255.0f
-    );
-    color.w = 255;
+    color = clamp(diffusive * color_diffusive + specular * color_specular, 0.0f, 1.0f);
 
     return color;
 }
 
 
-uchar4 render_pixel(Ray ray,
+float3 render_pixel(Ray ray,
            __global QualityProps * quality_props,
            __global $fractal_parameters_typename * parameters,
            __global Material * material) {
 
-    uchar4 color = {0, 0, 0, 0};
+    float3 color = {0, 0, 0};
 
     float epsilon = quality_props->epsilon;
 
     bool reflected = false;
     bool camera_in_shadow = !march_ray(ray.pos, quality_props->sun_direction, quality_props, parameters).outside;
 
-    uchar4 fog_color = {255, 255, 255, 255};
+    float3 fog_color = {1, 1, 1};
 
     for (int i = 0; i < quality_props->reflection_depth + 1; i++) {
         Hit hit = march_ray(ray.pos, ray.dir, quality_props, parameters);
 
-        uchar4 current_color;
+        float3 current_color;
 
         if (hit.outside) {
 
-            current_color.x = 135;
-            current_color.y = 206;
-            current_color.z = 235;
-            current_color.w = 0;
+            current_color.x = 135.0f / 255.0f;
+            current_color.y = 206.0f / 255.0f;
+            current_color.z = 235.0f / 255.0f;
 
-            int3 glow_color = quality_props->glow_color;
+            float3 glow_color = quality_props->glow_color;
 
-            if ((glow_color.x + glow_color.y + glow_color.z) == 0) {
-                float3 ot = normalize(orbit_trap(hit.position, quality_props, parameters));
-                glow_color.x = (int) ot.x * 255;
-                glow_color.y = (int) ot.y * 255;
-                glow_color.z = (int) ot.z * 255;
+            if (fast_length(glow_color) == 0) {
+                glow_color = normalize(orbit_trap(hit.position, quality_props, parameters));
             }
 
             float glow_mul = (1.0f - hit.min_distance_to_fractal) * (1.0f - hit.min_distance_to_fractal);
 
-            current_color.x = (uchar) clamp((int) current_color.x + (int) (glow_color.x * glow_mul), 0, 255);
-            current_color.y = (uchar) clamp((int) current_color.y + (int) (glow_color.y * glow_mul), 0, 255);
-            current_color.z = (uchar) clamp((int) current_color.z + (int) (glow_color.z * glow_mul), 0, 255);
+            current_color = clamp((current_color + glow_color * glow_mul, 0, 1);
 
         } else {
 
             if (quality_props->render_simple) {
 
-                uchar3 color_diffusive = material->color_diffusive;
+                float3 color_diffusive = material->color_diffusive;
 
-                if (quality_props->use_orbit_trap) {
-                    float3 ot = normalize(orbit_trap(hit.position, quality_props, parameters));
-                    color_diffusive.x = (unsigned char)(ot.x * 255.0f);
-                    color_diffusive.y = (unsigned char)(ot.y * 255.0f);
-                    color_diffusive.z = (unsigned char)(ot.z * 255.0f);
-                }
+                if (quality_props->use_orbit_trap)
+                    color_diffusive = normalize(orbit_trap(hit.position, quality_props, parameters));
 
                 float color_strength = 1.0f - (float)hit.depth / (float)quality_props->ray_steps_limit;
 
-                current_color.x = (unsigned char)clamp(
-                    (color_strength * (float)color_diffusive.x),
-                    0.0f,
-                    (float)color_diffusive.x);
-                current_color.y = (unsigned char)clamp(
-                    (color_strength * (float)color_diffusive.y),
-                    0.0f,
-                    (float)color_diffusive.y);
-                current_color.z = (unsigned char)clamp(
-                    (color_strength * (float)color_diffusive.z),
-                    0.0f,
-                    (float)color_diffusive.z);
-                current_color.w = 255;
+                current_color.x = clamp((color_strength * color_diffusive), 0.0f, color_diffusive);
 
             } else {
 
@@ -290,9 +246,7 @@ uchar4 render_pixel(Ray ray,
 
         }
 
-        color.x += (unsigned char)(reflected_power * (float)current_color.x);
-        color.y += (unsigned char)(reflected_power * (float)current_color.y);
-        color.z += (unsigned char)(reflected_power * (float)current_color.z);
+        color += reflected_power * current_color;
 
         if (i == 0) {
             color.w = current_color.w;
@@ -310,7 +264,7 @@ __kernel void render(__global Camera * camera,
                      __global QualityProps * quality_props,
                      __global $fractal_parameters_typename * parameters,
                      __global Material * material,
-                     __global uchar * output) {
+                     __global float * output) {
 
     int idX = get_global_id(0);
     int idY = get_global_id(1);
@@ -332,12 +286,11 @@ __kernel void render(__global Camera * camera,
     ray.dir = camera->pos + camera->right * x + camera->up * y + camera->dir * camera->zoom;
     ray.dir = normalize(ray.dir - camera->pos);
 
-    uchar4 color = render_pixel(ray, quality_props, parameters, material);
+    float3 color = render_pixel(ray, quality_props, parameters, material);
 
-    __global uchar * pixel = & output[idX * height * 4 + idY * 4];
+    __global float * pixel = & output[idX * height * 3 + idY * 3];
 
     pixel[0] = color.x;
     pixel[1] = color.y;
     pixel[2] = color.z;
-    pixel[3] = color.w;
 }

@@ -78,8 +78,8 @@ class Render:
 
         self.fractal = self.fractals[0]
 
-        self._host_image_buffer = np.zeros(self.width * self.height * 4, dtype=np.uint8)
-        self._host_large_image_buffer = np.zeros(self.width * 5 * self.height * 5 * 4, dtype=np.uint8)
+        self._host_image_buffer = np.zeros(self.width * self.height * 4, dtype=np.float)
+        self._host_large_image_buffer = np.zeros(self.width * 5 * self.height * 5 * 4, dtype=np.float)
 
         self._image_buffer = cl.Buffer(
             self.context,
@@ -104,7 +104,7 @@ class Render:
         self.width = max(1, width)
         self.height = max(1, height)
 
-        self._host_image_buffer = np.zeros(self.width * self.height * 4, dtype=np.uint8)
+        self._host_image_buffer = np.zeros(self.width * self.height * 4, dtype=np.float)
         self._image_buffer = cl.Buffer(
             self.context,
             cl.mem_flags.READ_ONLY,

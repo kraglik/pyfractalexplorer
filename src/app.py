@@ -67,7 +67,7 @@ class App:
 
     def run(self):
         surface = pygame.pixelcopy.make_surface(
-            self.render.host_buffer.reshape((self.width, self.height, 4))[:, :, :3]
+            self.render.host_buffer.reshape((self.width, self.height, 3))
         )
 
         default_movement_speed = 0.5
@@ -79,15 +79,6 @@ class App:
         epsilon = self.render.epsilon
 
         amplitude = 0.0
-
-        key_map = {
-            'w': False,
-            'a': False,
-            's': False,
-            'd': False,
-            'lctrl': False,
-            'space': False
-        }
 
         fractal_index = 0
 
@@ -129,7 +120,7 @@ class App:
             self.render.render()
             pygame.surfarray.blit_array(
                 surface,
-                self.render.host_buffer.reshape((self.width, self.height, 4))[:, :, :3]
+                self.render.host_buffer.reshape((self.width, self.height, 3))
             )
             self.screen.blit(surface, (0, 0))
 
@@ -188,18 +179,6 @@ class App:
                         fractal_index = (fractal_index - 1) % len(data)
                         fractal_changed = True
 
-                    elif event.key == K_w:
-                        key_map['w'] = True
-                    elif event.key == K_s:
-                        key_map['s'] = True
-                    elif event.key == K_a:
-                        key_map['a'] = True
-                    elif event.key == K_d:
-                        key_map['d'] = True
-                    elif event.key == K_LCTRL:
-                        key_map['lctrl'] = True
-                    elif event.key == K_SPACE:
-                        key_map['space'] = True
                     elif event.key == K_q:
                         speed_stack.insert(0, movement_speed)
                     elif event.key == K_e:
@@ -219,20 +198,6 @@ class App:
                     elif event.key == K_LEFT:
                         epsilon /= 2
 
-                elif event.type == KEYUP:
-                    if event.key == K_w:
-                        key_map['w'] = False
-                    elif event.key == K_s:
-                        key_map['s'] = False
-                    elif event.key == K_a:
-                        key_map['a'] = False
-                    elif event.key == K_d:
-                        key_map['d'] = False
-                    elif event.key == K_LCTRL:
-                        key_map['lctrl'] = False
-                    elif event.key == K_SPACE:
-                        key_map['space'] = False
-
                 elif event.type == MOUSEBUTTONDOWN:
                     if event.button == 4:
                         self.camera.zoom *= 1.1
@@ -245,17 +210,19 @@ class App:
 
             shift = np.array([0, 0, 0], dtype=np.float32)
 
-            if key_map['w']:
+            key_map = pygame.key.get_pressed()
+
+            if key_map[pygame.K_w]:
                 shift += self.camera.direction
-            if key_map['s']:
+            if key_map[pygame.K_s]:
                 shift -= self.camera.direction
-            if key_map['a']:
+            if key_map[pygame.K_a]:
                 shift -= self.camera.right
-            if key_map['d']:
+            if key_map[pygame.K_d]:
                 shift += self.camera.right
-            if key_map['space']:
+            if key_map[pygame.K_SPACE]:
                 shift += self.camera.up
-            if key_map['lctrl']:
+            if key_map[pygame.K_LCTRL]:
                 shift -= self.camera.up
 
             shift_l = np.linalg.norm(shift)
