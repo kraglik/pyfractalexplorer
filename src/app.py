@@ -24,7 +24,7 @@ class App:
 
         self.platform_id = platform_id or 0
         self.device_id = device_id or 0
-        self.device_type = device_type or cl.device_type.ALL
+        self.device_type = device_type or cl.device_type.GPU
 
         self.platform = cl.get_platforms()[self.platform_id]
         self.device = self.platform.get_devices()[self.device_id]
@@ -144,8 +144,8 @@ class App:
                     pygame.mouse.set_pos((self.width / 2, self.height / 2))
 
                     self.camera.rotate(
-                        (mouse_position[0] - self.width // 2) / 250,
-                        (mouse_position[1] - self.height // 2) / 250
+                        (mouse_position[0] - self.width // 2) / 500,
+                        (mouse_position[1] - self.height // 2) / 500
                     )
 
                 elif event.type == KEYDOWN:

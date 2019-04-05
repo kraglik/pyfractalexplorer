@@ -125,7 +125,8 @@ class Render:
             self.fractal.get_glow_sharpness()
         )], dtype=self._quality_props_dtype)[0]
 
-        cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)
+        event = cl.enqueue_copy(self.queue, self._quality_props_buffer, quality_props_instance)
+        event.wait()
 
         self.camera.sync_with_device()
         self.fractal.sync_with_device()
@@ -150,7 +151,9 @@ class Render:
             self.queue,
             self._host_image_buffer,
             self._image_buffer
-        )
+        ).wait()
+
+        self.queue.finish()
 
     def save(self, path):
         self.sync_with_device()
@@ -172,7 +175,9 @@ class Render:
             self.queue,
             self._host_large_image_buffer,
             self._large_image_buffer
-        )
+        ).wait()
+
+        self.queue.finish()
 
         from PIL import Image
 
@@ -180,7 +185,7 @@ class Render:
             .fromarray(
                 self._host_large_image_buffer.reshape(
                     (self.width * 5, self.height * 5, 4)
-                )[:, :, :3]
+                )
             )\
             .transpose(Image.ROTATE_90)\
             .transpose(Image.FLIP_TOP_BOTTOM)

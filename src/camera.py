@@ -90,7 +90,7 @@ class Camera:
 
         forward = np.array([q.x, q.y, q.z])
 
-        self.look_at(self.position + forward)
+        self.look_at(self.position + self.direction + forward)
 
     def _yaw(self, radians):
         q = Quaternion.from_axis_angle(self.world_up, radians / self.zoom)
@@ -98,7 +98,7 @@ class Camera:
 
         forward = np.array([q.x, q.y, q.z])
 
-        self.look_at(self.position + forward)
+        self.look_at(self.position + self.direction + forward)
 
     def sync_with_device(self):
         camera_instance = np.array([(
