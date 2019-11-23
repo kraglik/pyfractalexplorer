@@ -23,8 +23,8 @@ patsy==0.5.1
 pauvre==0.1.86
 Pillow==6.2.0
 plotly==3.7.1
-pygame==1.9.4
-pyopencl==2018.2.5
+pygame==2.0.0.dev4
+pyopencl==2019.1.2
 PyOpenGL==3.1.0
 pyparsing==2.3.1
 pyrsistent==0.14.11
