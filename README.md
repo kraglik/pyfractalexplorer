@@ -12,9 +12,9 @@ Animated fractals (YouTube):
 
 Ray-traced Mandelbox fractal:
 
-![Example 1](https://github.com/kraglik/pyfractalexplorer/raw/master/screenshots/mandelbox_1.png "Example 1")
+![Example 1](https://raw.githubusercontent.com/kraglik/pyfractalexplorer/master/screenshots/mandelbox_1.png "Example 1")
 
-![Example 2](https://github.com/kraglik/pyfractalexplorer/raw/master/screenshots/mandelbox_2.png "Example 2")
+![Example 2](https://raw.githubusercontent.com/kraglik/pyfractalexplorer/master/screenshots/mandelbox_2.png "Example 2")
 
 ## Controls:
 
